@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # ServeX - Service Booking Platform
 
 A full-stack service booking platform built with React, Node.js, Express, and SQLite. Book home services like cleaning, plumbing, electrical work, salon services, and more.
@@ -227,3 +228,7 @@ This project is licensed under the MIT License.
 ## Support
 
 For support, email support@servex.com or open an issue in the repository.
+=======
+# ServX-Service-Booking_site-
+ServX is a full-stack service booking platform with Node.js/Express backend and React/Vite frontend. Users can browse, book, and manage services. Features include authentication, payments, dashboards, and notifications. Built for easy deployment and scalability.
+>>>>>>> dd594dfc994e5d27e4e2efeed87ce362649ebdc4
