@@ -2,14 +2,12 @@ const nodemailer = require('nodemailer');
 
 // Create transporter (configure with your email service)
 const createTransporter = () => {
-    // For development, use ethereal email (fake SMTP)
-    // For production, use real SMTP service (Gmail, SendGrid, etc.)
-    
-    if (process.env.NODE_ENV === 'production') {
-        return nodemailer.createTransporter({
+    // If SMTP_USER is provided in .env, use real SMTP (works in both dev and prod)
+    if (process.env.SMTP_USER) {
+        return nodemailer.createTransport({
             host: process.env.SMTP_HOST,
             port: process.env.SMTP_PORT,
-            secure: true,
+            secure: process.env.SMTP_PORT == '465', // true for 465, false for other ports
             auth: {
                 user: process.env.SMTP_USER,
                 pass: process.env.SMTP_PASS,
@@ -50,7 +48,7 @@ Amount: ₹${booking.total_price}
 
 Please login to your agent dashboard to accept this booking.
 
-Dashboard: ${process.env.FRONTEND_URL || 'http://localhost:5174'}/agent-dashboard
+Dashboard: ${process.env.FRONTEND_URL || 'http://localhost:5173'}/agent-dashboard
 
 Thank you,
 ServeX Team
@@ -74,7 +72,7 @@ ServeX Team
             
             <p>Please login to your agent dashboard to accept this booking.</p>
             
-            <a href="${process.env.FRONTEND_URL || 'http://localhost:5174'}/agent-dashboard" 
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/agent-dashboard" 
                style="display: inline-block; background: #4F46E5; color: white; padding: 12px 24px; 
                       text-decoration: none; border-radius: 6px; margin: 20px 0;">
                 View Dashboard
@@ -116,7 +114,7 @@ Amount: ₹${booking.total_price}
 Status: Pending
 
 View details in admin dashboard:
-${process.env.FRONTEND_URL || 'http://localhost:5174'}/admin-dashboard
+${process.env.FRONTEND_URL || 'http://localhost:5173'}/admin-dashboard
 
 ServeX Platform
     `;
@@ -138,7 +136,7 @@ ServeX Platform
                 <p><strong>Status:</strong> <span style="color: #F59E0B;">Pending</span></p>
             </div>
             
-            <a href="${process.env.FRONTEND_URL || 'http://localhost:5174'}/admin-dashboard" 
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/admin-dashboard" 
                style="display: inline-block; background: #DC2626; color: white; padding: 12px 24px; 
                       text-decoration: none; border-radius: 6px; margin: 20px 0;">
                 View Admin Dashboard
@@ -179,7 +177,7 @@ Status: Pending (Waiting for agent to accept)
 You will receive a notification once an agent accepts your booking.
 
 View booking details:
-${process.env.FRONTEND_URL || 'http://localhost:5174'}/bookings/${booking.id}
+${process.env.FRONTEND_URL || 'http://localhost:5173'}/bookings/${booking.id}
 
 Thank you for choosing ServeX!
     `;
@@ -202,7 +200,7 @@ Thank you for choosing ServeX!
             
             <p>You will receive a notification once an agent accepts your booking.</p>
             
-            <a href="${process.env.FRONTEND_URL || 'http://localhost:5174'}/bookings/${booking.id}" 
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/bookings/${booking.id}" 
                style="display: inline-block; background: #10B981; color: white; padding: 12px 24px; 
                       text-decoration: none; border-radius: 6px; margin: 20px 0;">
                 View Booking Details
@@ -240,7 +238,7 @@ Time: ${booking.time}
 The agent will arrive at your location at the scheduled time.
 
 View booking details:
-${process.env.FRONTEND_URL || 'http://localhost:5174'}/bookings/${booking.id}
+${process.env.FRONTEND_URL || 'http://localhost:5173'}/bookings/${booking.id}
 
 Thank you,
 ServeX Team
@@ -259,7 +257,7 @@ const sendNewBookingNotifications = async (bookingId, pool) => {
         // Fetch complete booking details
         const query = `
             SELECT b.*, 
-            s.name as service_name, s.price as service_price,
+            s.name as service_name, s.price as service_price, s.category as service_category,
             u.name as user_name, u.email as user_email
             FROM bookings b 
             JOIN services s ON b.service_id = s.id 
@@ -283,8 +281,14 @@ const sendNewBookingNotifications = async (bookingId, pool) => {
             price: booking.service_price
         };
         
-        // Get all agents
-        const [agents] = await pool.query('SELECT email FROM users WHERE role = "agent"');
+        // Get matching agents based on service category
+        let [agents] = await pool.query(
+            'SELECT email FROM users WHERE role = "agent" AND LOWER(service_category) = LOWER(?)',
+            [booking.service_category]
+        );
+        
+        // If no matching category, don't spam ALL agents via email (too noisy).
+        // The in-app notification handles the fallback.
         
         // Get all admins
         const [admins] = await pool.query('SELECT email FROM users WHERE role = "admin"');
@@ -320,10 +324,162 @@ const sendNewBookingNotifications = async (bookingId, pool) => {
     }
 };
 
+// Send payment success notification to user
+const notifyUserPaymentSuccessEmail = async (user, booking, service) => {
+    const transporter = createTransporter();
+    
+    const subject = `Payment Successful - ${service.name}`;
+    const text = `
+Hello ${user.name},
+
+Your payment of ₹${booking.total_price} for ${service.name} was successful.
+
+Booking ID: #${booking.id}
+Service: ${service.name}
+Amount Paid: ₹${booking.total_price}
+
+Thank you for using ServeX!
+    `;
+
+    const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #10B981;">Payment Successful!</h2>
+            <p>Hello ${user.name},</p>
+            <p>Your payment of ₹${booking.total_price} for ${service.name} was successful.</p>
+            
+            <div style="background: #ECFDF5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10B981;">
+                <p><strong>Booking ID:</strong> #${booking.id}</p>
+                <p><strong>Service:</strong> ${service.name}</p>
+                <p><strong>Amount Paid:</strong> ₹${booking.total_price}</p>
+            </div>
+            
+            <p style="color: #6B7280; font-size: 14px; margin-top: 30px;">
+                Thank you for using ServeX!
+            </p>
+        </div>
+    `;
+
+    try {
+        await transporter.sendMail({
+            to: user.email,
+            subject,
+            text,
+            html
+        });
+    } catch (error) {
+        console.error('Error sending payment success email:', error);
+    }
+};
+
+// Send forgot password email
+const sendForgotPasswordEmail = async (user, resetUrl) => {
+    const transporter = createTransporter();
+    
+    const subject = 'Password Reset Request';
+    const text = `
+Hello ${user.name},
+
+You requested to reset your password. Click the link below to reset it:
+${resetUrl}
+
+If you did not request a password reset, please ignore this email.
+    `;
+
+    const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #4F46E5;">Password Reset Request</h2>
+            <p>Hello ${user.name},</p>
+            <p>You recently requested to reset your password for your ServeX account.</p>
+            
+            <a href="${resetUrl}" 
+               style="display: inline-block; background: #4F46E5; color: white; padding: 12px 24px; 
+                      text-decoration: none; border-radius: 6px; margin: 20px 0;">
+                Reset Password
+            </a>
+            
+            <p>If you did not request a password reset, please ignore this email or contact support if you have concerns.</p>
+            
+            <p style="color: #6B7280; font-size: 14px; margin-top: 30px;">
+                ServeX Team
+            </p>
+        </div>
+    `;
+
+    try {
+        await transporter.sendMail({
+            to: user.email,
+            subject,
+            text,
+            html
+        });
+    } catch (error) {
+        console.error('Error sending forgot password email:', error);
+        throw error; // Throw so authController can catch it
+    }
+};
+
+// Send service completed notification to user
+const notifyUserServiceCompletedEmail = async (user, booking, service) => {
+    const transporter = createTransporter();
+    
+    const subject = `Service Completed - ${service.name}`;
+    const text = `
+Hello ${user.name},
+
+Your service for ${service.name} has been completed!
+
+Booking ID: #${booking.id}
+Service: ${service.name}
+
+Thank you for choosing ServeX. We hope you enjoyed the service!
+Please consider leaving a review on our platform.
+    `;
+
+    const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #4F46E5;">Service Completed!</h2>
+            <p>Hello ${user.name},</p>
+            <p>Your service for <strong>${service.name}</strong> has been marked as completed.</p>
+            
+            <div style="background: #F3F4F6; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4F46E5;">
+                <p><strong>Booking ID:</strong> #${booking.id}</p>
+                <p><strong>Service:</strong> ${service.name}</p>
+            </div>
+            
+            <p>Thank you for choosing ServeX. We hope you enjoyed the service!</p>
+            <p>Please consider leaving a review on our platform.</p>
+            
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/bookings/${booking.id}" 
+               style="display: inline-block; background: #4F46E5; color: white; padding: 12px 24px; 
+                      text-decoration: none; border-radius: 6px; margin: 20px 0;">
+                View Booking
+            </a>
+            
+            <p style="color: #6B7280; font-size: 14px; margin-top: 30px;">
+                ServeX Team
+            </p>
+        </div>
+    `;
+
+    try {
+        await transporter.sendMail({
+            to: user.email,
+            subject,
+            text,
+            html
+        });
+    } catch (error) {
+        console.error('Error sending service completed email:', error);
+    }
+};
+
 module.exports = {
     notifyAgentsNewBooking,
     notifyAdminNewBooking,
     notifyUserBookingCreated,
     notifyUserBookingAccepted,
-    sendNewBookingNotifications
+    sendNewBookingNotifications,
+    notifyUserPaymentSuccessEmail,
+    sendForgotPasswordEmail,
+    notifyUserServiceCompletedEmail
 };

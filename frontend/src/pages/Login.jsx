@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Wrench, Mail, Lock, Loader2, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Loader2, Eye, EyeOff, AlertCircle, Wrench } from 'lucide-react';
+import Logo from '../components/Logo';
 
 export default function Login() {
     const { login, isAuthenticated, user } = useAuth();
@@ -64,14 +65,7 @@ export default function Login() {
             <div className="flex flex-1 flex-col justify-center px-6 py-12 sm:px-12 lg:px-20">
                 <div className="mx-auto w-full max-w-sm">
                     {/* Logo */}
-                    <Link to="/" className="inline-flex items-center gap-2 group mb-10">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-600 transition-transform group-hover:scale-105">
-                            <Wrench className="h-5 w-5 text-white" />
-                        </div>
-                        <span className="text-xl font-bold text-surface-900 tracking-tight">
-                            Serve<span className="text-primary-600">X</span>
-                        </span>
-                    </Link>
+                    <Logo size="medium" className="mb-10" />
 
                     <h1 className="text-2xl font-bold text-surface-900">Welcome back</h1>
                     <p className="mt-1.5 text-sm text-surface-500">
@@ -110,9 +104,14 @@ export default function Login() {
 
                         {/* Password */}
                         <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-surface-700 mb-1.5">
-                                Password
-                            </label>
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label htmlFor="password" className="block text-sm font-medium text-surface-700">
+                                    Password
+                                </label>
+                                <Link to="/forgot-password" className="text-xs font-medium text-primary-600 hover:text-primary-500">
+                                    Forgot password?
+                                </Link>
+                            </div>
                             <div className="relative">
                                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-400" />
                                 <input

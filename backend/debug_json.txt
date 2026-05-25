@@ -1,0 +1,336 @@
+AGENTS:
+[
+  {
+    "id": 3,
+    "name": "Vansh",
+    "service_category": null
+  },
+  {
+    "id": 4,
+    "name": "Agent1",
+    "service_category": null
+  },
+  {
+    "id": 5,
+    "name": "agent12",
+    "service_category": null
+  },
+  {
+    "id": 6,
+    "name": "Agent11",
+    "service_category": null
+  },
+  {
+    "id": 8,
+    "name": "vedant",
+    "service_category": null
+  },
+  {
+    "id": 11,
+    "name": "vedant111",
+    "service_category": null
+  },
+  {
+    "id": 13,
+    "name": "agento",
+    "service_category": null
+  },
+  {
+    "id": 14,
+    "name": "utkarsh",
+    "service_category": null
+  },
+  {
+    "id": 15,
+    "name": "RedEye",
+    "service_category": null
+  },
+  {
+    "id": 16,
+    "name": "PabloPicaso",
+    "service_category": null
+  },
+  {
+    "id": 17,
+    "name": "Electro",
+    "service_category": null
+  },
+  {
+    "id": 18,
+    "name": "asfsfs",
+    "service_category": null
+  }
+]
+
+SERVICES:
+[
+  {
+    "id": 1,
+    "name": "Deep Home Cleaning",
+    "category": "Cleaning"
+  },
+  {
+    "id": 2,
+    "name": "Kitchen Deep Cleaning",
+    "category": "Cleaning"
+  },
+  {
+    "id": 3,
+    "name": "Bathroom Cleaning",
+    "category": "Cleaning"
+  },
+  {
+    "id": 4,
+    "name": "AC Service & Repair",
+    "category": "Appliance"
+  },
+  {
+    "id": 5,
+    "name": "Washing Machine Repair",
+    "category": "Appliance"
+  },
+  {
+    "id": 6,
+    "name": "Refrigerator Repair",
+    "category": "Appliance"
+  },
+  {
+    "id": 7,
+    "name": "Electrical Wiring",
+    "category": "Electrical"
+  },
+  {
+    "id": 8,
+    "name": "Light & Fan Installation",
+    "category": "Electrical"
+  },
+  {
+    "id": 9,
+    "name": "MCB & Switchboard Repair",
+    "category": "Electrical"
+  },
+  {
+    "id": 10,
+    "name": "Full Home Painting",
+    "category": "Painting"
+  },
+  {
+    "id": 11,
+    "name": "Single Room Painting",
+    "category": "Painting"
+  },
+  {
+    "id": 12,
+    "name": "Exterior Wall Painting",
+    "category": "Painting"
+  },
+  {
+    "id": 13,
+    "name": "Plumbing Services",
+    "category": "Plumbing"
+  },
+  {
+    "id": 14,
+    "name": "Tap & Mixer Installation",
+    "category": "Plumbing"
+  },
+  {
+    "id": 15,
+    "name": "Drain Cleaning",
+    "category": "Plumbing"
+  },
+  {
+    "id": 16,
+    "name": "Salon at Home - Women",
+    "category": "Salon"
+  },
+  {
+    "id": 17,
+    "name": "Salon at Home - Men",
+    "category": "Salon"
+  },
+  {
+    "id": 18,
+    "name": "Bridal Makeup",
+    "category": "Salon"
+  },
+  {
+    "id": 19,
+    "name": "Furniture Assembly",
+    "category": "Carpentry"
+  },
+  {
+    "id": 20,
+    "name": "Door & Window Repair",
+    "category": "Carpentry"
+  },
+  {
+    "id": 21,
+    "name": "Custom Furniture",
+    "category": "Carpentry"
+  },
+  {
+    "id": 22,
+    "name": "General Pest Control",
+    "category": "Pest Control"
+  },
+  {
+    "id": 23,
+    "name": "Termite Control",
+    "category": "Pest Control"
+  },
+  {
+    "id": 24,
+    "name": "Bed Bug Treatment",
+    "category": "Pest Control"
+  }
+]
+
+BOOKINGS:
+[
+  {
+    "id": 1,
+    "user_id": 1,
+    "service_id": 1,
+    "service_category": "Cleaning",
+    "status": "pending",
+    "payment_status": "pending",
+    "agent_id": null
+  },
+  {
+    "id": 2,
+    "user_id": 1,
+    "service_id": 1,
+    "service_category": "Cleaning",
+    "status": "pending",
+    "payment_status": "pending",
+    "agent_id": null
+  },
+  {
+    "id": 3,
+    "user_id": 1,
+    "service_id": 4,
+    "service_category": "Appliance",
+    "status": "in_progress",
+    "payment_status": "paid",
+    "agent_id": 3
+  },
+  {
+    "id": 4,
+    "user_id": 1,
+    "service_id": 2,
+    "service_category": "Cleaning",
+    "status": "completed",
+    "payment_status": "paid",
+    "agent_id": 5
+  },
+  {
+    "id": 5,
+    "user_id": 1,
+    "service_id": 14,
+    "service_category": "Plumbing",
+    "status": "completed",
+    "payment_status": "paid",
+    "agent_id": 6
+  },
+  {
+    "id": 6,
+    "user_id": 7,
+    "service_id": 4,
+    "service_category": "Appliance",
+    "status": "completed",
+    "payment_status": "paid",
+    "agent_id": 8
+  },
+  {
+    "id": 7,
+    "user_id": 10,
+    "service_id": 4,
+    "service_category": "Appliance",
+    "status": "completed",
+    "payment_status": "paid",
+    "agent_id": 11
+  },
+  {
+    "id": 8,
+    "user_id": 10,
+    "service_id": 2,
+    "service_category": "Cleaning",
+    "status": "accepted",
+    "payment_status": "paid",
+    "agent_id": 16
+  },
+  {
+    "id": 9,
+    "user_id": 7,
+    "service_id": 5,
+    "service_category": "Appliance",
+    "status": "completed",
+    "payment_status": "paid",
+    "agent_id": 13
+  },
+  {
+    "id": 10,
+    "user_id": 7,
+    "service_id": 4,
+    "service_category": "Appliance",
+    "status": "cancelled",
+    "payment_status": "paid",
+    "agent_id": null
+  },
+  {
+    "id": 11,
+    "user_id": 7,
+    "service_id": 7,
+    "service_category": "Electrical",
+    "status": "completed",
+    "payment_status": "paid",
+    "agent_id": 14
+  },
+  {
+    "id": 12,
+    "user_id": 7,
+    "service_id": 11,
+    "service_category": "Painting",
+    "status": "in_progress",
+    "payment_status": "paid",
+    "agent_id": 14
+  },
+  {
+    "id": 13,
+    "user_id": 1,
+    "service_id": 11,
+    "service_category": "Painting",
+    "status": "completed",
+    "payment_status": "paid",
+    "agent_id": 17
+  },
+  {
+    "id": 14,
+    "user_id": 1,
+    "service_id": 9,
+    "service_category": "Electrical",
+    "status": "completed",
+    "payment_status": "paid",
+    "agent_id": 16
+  },
+  {
+    "id": 15,
+    "user_id": 1,
+    "service_id": 12,
+    "service_category": "Painting",
+    "status": "cancelled",
+    "payment_status": "paid",
+    "agent_id": null
+  },
+  {
+    "id": 16,
+    "user_id": 1,
+    "service_id": 7,
+    "service_category": "Electrical",
+    "status": "pending",
+    "payment_status": "paid",
+    "agent_id": null
+  }
+]
+

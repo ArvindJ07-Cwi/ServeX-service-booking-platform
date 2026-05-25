@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Wrench, Mail, Lock, User, Phone, Loader2, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Wrench, Mail, Lock, User, Phone, Loader2, Eye, EyeOff, AlertCircle, MapPin, Tag } from 'lucide-react';
+import Logo from '../components/Logo';
 
 // InputField is defined OUTSIDE the component to prevent re-creation on every render
 function InputField({ name, label, type = 'text', icon: Icon, placeholder, autoComplete, value, onChange, error, showPassword, onTogglePassword }) {
@@ -48,6 +49,10 @@ export default function Register() {
         password: '',
         confirmPassword: '',
         role: 'user',
+        location: '',   // kept for backward compat, set same as city
+        city: '',
+        area: '',
+        service_category: '',
     });
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
@@ -82,7 +87,9 @@ export default function Register() {
         setError('');
 
         try {
-            const { confirmPassword, ...payload } = form;
+            const { confirmPassword, ...rest } = form;
+            // Keep location in sync with city for backward compat
+            const payload = { ...rest, location: form.city || form.location || null };
             const user = await register(payload);
             const dashboardMap = { admin: '/admin-dashboard', agent: '/agent-dashboard', user: '/dashboard' };
             navigate(dashboardMap[user.role] || '/dashboard', { replace: true });
@@ -131,14 +138,7 @@ export default function Register() {
             {/* Right - Form */}
             <div className="flex flex-1 flex-col justify-center px-6 py-12 sm:px-12 lg:px-20">
                 <div className="mx-auto w-full max-w-sm">
-                    <Link to="/" className="inline-flex items-center gap-2 group mb-10 lg:hidden">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-600">
-                            <Wrench className="h-5 w-5 text-white" />
-                        </div>
-                        <span className="text-xl font-bold text-surface-900 tracking-tight">
-                            Serve<span className="text-primary-600">X</span>
-                        </span>
-                    </Link>
+                    <Logo size="medium" className="mb-10 lg:hidden" />
 
                     <h1 className="text-2xl font-bold text-surface-900">Create your account</h1>
                     <p className="mt-1.5 text-sm text-surface-500">
@@ -179,6 +179,75 @@ export default function Register() {
                                 ))}
                             </div>
                         </div>
+
+                        {/* Agent-specific fields */}
+                        {form.role === 'agent' && (
+                            <>
+                                <div>
+                                    <label className="block text-sm font-medium text-surface-700 mb-1.5">Service Area / City <span className="text-red-500">*</span></label>
+                                    <div className="relative">
+                                        <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-400" />
+                                        <select
+                                            name="city"
+                                            value={form.city}
+                                            onChange={(e) => setForm(prev => ({ ...prev, city: e.target.value, location: e.target.value }))}
+                                            className="input-field pl-10"
+                                        >
+                                            <option value="">Select your city / area</option>
+                                            <option value="Mumbai">Mumbai</option>
+                                            <option value="Thane">Thane</option>
+                                            <option value="Navi Mumbai">Navi Mumbai</option>
+                                            <option value="Pune">Pune</option>
+                                            <option value="Delhi">Delhi</option>
+                                            <option value="Bangalore">Bangalore</option>
+                                            <option value="Hyderabad">Hyderabad</option>
+                                            <option value="Chennai">Chennai</option>
+                                            <option value="Kolkata">Kolkata</option>
+                                            <option value="Ahmedabad">Ahmedabad</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-surface-700 mb-1.5">
+                                        Area / Locality <span className="text-surface-400 font-normal">(Optional — for more precise matching)</span>
+                                    </label>
+                                    <div className="relative">
+                                        <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-400" />
+                                        <input
+                                            type="text"
+                                            name="area"
+                                            value={form.area}
+                                            onChange={handleChange}
+                                            placeholder="e.g. Andheri West, Koregaon Park"
+                                            className="input-field pl-10"
+                                            maxLength={100}
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-surface-700 mb-1.5">Service Category</label>
+                                    <div className="relative">
+                                        <Tag className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-400" />
+                                        <select
+                                            name="service_category"
+                                            value={form.service_category}
+                                            onChange={handleChange}
+                                            className="input-field pl-10"
+                                        >
+                                            <option value="">Select your expertise</option>
+                                            <option value="Cleaning">Cleaning</option>
+                                            <option value="Plumbing">Plumbing</option>
+                                            <option value="Electrical">Electrical</option>
+                                            <option value="Painting">Painting</option>
+                                            <option value="Appliance">Appliance Repair</option>
+                                            <option value="Carpentry">Carpentry</option>
+                                            <option value="Salon">Salon & Beauty</option>
+                                            <option value="Pest Control">Pest Control</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </>
+                        )}
 
                         <InputField name="password" label="Password" icon={Lock} placeholder="••••••••" autoComplete="new-password" value={form.password} onChange={handleChange} error={errors.password} showPassword={showPassword} onTogglePassword={() => setShowPassword(!showPassword)} />
                         <InputField name="confirmPassword" label="Confirm password" icon={Lock} placeholder="••••••••" autoComplete="new-password" value={form.confirmPassword} onChange={handleChange} error={errors.confirmPassword} showPassword={showPassword} onTogglePassword={() => setShowPassword(!showPassword)} />

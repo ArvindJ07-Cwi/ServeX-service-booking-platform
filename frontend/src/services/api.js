@@ -10,11 +10,10 @@ const api = axios.create({
     timeout: 15000,
 });
 
-// Request interceptor — attach role-based JWT token (read directly from localStorage to avoid circular imports)
+// Request interceptor — attach JWT token from sessionStorage (per-tab session)
 api.interceptors.request.use(
     (config) => {
-        const role = localStorage.getItem('activeRole');
-        const token = role ? localStorage.getItem(`token_${role}`) : null;
+        const token = sessionStorage.getItem('servx_token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -40,6 +39,8 @@ export const authAPI = {
     login: (credentials) => api.post('/auth/login', credentials),
     register: (data) => api.post('/auth/register', data),
     getProfile: () => api.get('/auth/profile'),
+    forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+    resetPassword: (token, password) => api.post('/auth/reset-password', { token, password }),
 };
 
 export const servicesAPI = {
@@ -65,6 +66,9 @@ export const bookingsAPI = {
     // Agent: accept booking
     accept: (id) => api.patch(`/bookings/${id}/accept`),
 
+    // Agent: reject assigned booking
+    reject: (id) => api.patch(`/bookings/${id}/reject`),
+
     // Agent: start service
     start: (id) => api.patch(`/bookings/${id}/start`),
 
@@ -73,6 +77,12 @@ export const bookingsAPI = {
 
     // User/Admin: cancel booking
     cancel: (id) => api.patch(`/bookings/${id}/cancel`),
+
+    // OTP: generate OTP for booking
+    generateOtp: (id) => api.post(`/bookings/${id}/generate-otp`),
+
+    // OTP: verify OTP to complete booking
+    verifyOtp: (id, otp) => api.post(`/bookings/${id}/verify-otp`, { otp }),
 
     // Admin: get all bookings
     getAll: (params) => api.get('/bookings/all', { params }), // Updated to point to /all
@@ -97,6 +107,7 @@ export const usersAPI = {
     updateProfile: (data) => api.put('/users/profile', data),
     update: (id, data) => api.put(`/users/${id}`, data),
     delete: (id) => api.delete(`/users/${id}`),
+    getAgents: (params) => api.get('/users/agents', { params }),
 };
 
 export const paymentAPI = {
@@ -104,6 +115,49 @@ export const paymentAPI = {
     createOrder: (data) => api.post('/payment/create-order', data),
     // Verify payment and create booking
     verify: (data) => api.post('/payment/verify', data),
+};
+
+export const couponAPI = {
+    apply: (data) => api.post('/coupons/apply', data), // expects { code, amount }
+    getAll: () => api.get('/coupons'),
+    create: (data) => api.post('/coupons', data),
+    delete: (id) => api.delete(`/coupons/${id}`)
+};
+
+export const reviewsAPI = {
+    create: (data) => api.post('/reviews', data),
+    getByBooking: (bookingId) => api.get(`/reviews/booking/${bookingId}`),
+    getByService: (serviceId) => api.get(`/reviews/service/${serviceId}`),
+    getByAgent: (agentId) => api.get(`/reviews/agent/${agentId}`),
+};
+
+export const adminAPI = {
+    getDashboardStats: () => api.get('/admin/dashboard'),
+    getUsers: () => api.get('/admin/users'),
+    getAgents: () => api.get('/admin/agents'),
+    updateUserStatus: (id, status) => api.patch(`/admin/users/${id}/status`, { availability_status: status }),
+    getPayments: () => api.get('/admin/payments'),
+    updateBookingStatus: (id, status) => api.patch(`/admin/bookings/${id}/status`, { status }),
+};
+
+export const chatAPI = {
+    getMessages: (bookingId) => api.get(`/chat/${bookingId}`),
+};
+
+export const notificationsAPI = {
+    getAll: () => api.get('/notifications'),
+    getUnreadCount: () => api.get('/notifications/unread-count'),
+    markAsRead: (id) => api.patch(`/notifications/${id}/read`),
+    markAllAsRead: () => api.patch('/notifications/read-all'),
+    delete: (id) => api.delete(`/notifications/${id}`),
+};
+
+export const uploadAPI = {
+    uploadImage: (formData) => api.post('/upload', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    }),
 };
 
 export default api;

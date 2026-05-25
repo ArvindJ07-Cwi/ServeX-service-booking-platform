@@ -5,6 +5,7 @@ import HeroSection from '../components/HeroSection';
 import CategoryGrid from '../components/CategoryGrid';
 import ServiceCard, { ServiceCardSkeleton } from '../components/ServiceCard';
 import { servicesAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const testimonials = [
     {
@@ -75,9 +76,21 @@ const whyUs = [
 
 export default function Home() {
     const navigate = useNavigate();
+    const { user, isAuthenticated } = useAuth();
     const [services, setServices] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeBanner, setActiveBanner] = useState(0);
+
+    // Redirect agents/admins to their dashboards — they shouldn't see the user home page
+    useEffect(() => {
+        if (isAuthenticated && user) {
+            if (user.role === 'agent') {
+                navigate('/agent-dashboard', { replace: true });
+            } else if (user.role === 'admin') {
+                navigate('/admin-dashboard', { replace: true });
+            }
+        }
+    }, [isAuthenticated, user, navigate]);
 
     useEffect(() => {
         const fetchServices = async () => {
@@ -186,17 +199,11 @@ export default function Home() {
                                 ? services.map((service) => (
                                     <ServiceCard key={service._id} service={service} />
                                 ))
-                                : /* Fallback demo services */
-                                [
-                                    { _id: 'demo-1', name: 'Deep Home Cleaning', description: 'Thorough cleaning of your entire home including kitchen, bathrooms, bedrooms and living areas.', price: 999, category: 'Cleaning', rating: 4.8, reviewCount: 234, duration: '3-4 hrs' },
-                                    { _id: 'demo-2', name: 'AC Service & Repair', description: 'Complete AC servicing including gas refill, deep cleaning, and performance check.', price: 599, category: 'Appliance', rating: 4.7, reviewCount: 189, duration: '1-2 hrs' },
-                                    { _id: 'demo-3', name: 'Electrical Wiring', description: 'Professional electrical wiring, switch installation and repair by certified electricians.', price: 399, category: 'Electrical', rating: 4.6, reviewCount: 156, duration: '1-3 hrs' },
-                                    { _id: 'demo-4', name: 'Full Home Painting', description: 'Complete interior and exterior painting with premium paints and professional painters.', price: 2499, category: 'Painting', rating: 4.9, reviewCount: 312, duration: '2-3 days' },
-                                    { _id: 'demo-5', name: 'Plumbing Services', description: 'Expert plumbing services for leaks, installations, drain cleaning and bathroom fitting.', price: 299, category: 'Plumbing', rating: 4.5, reviewCount: 178, duration: '1-2 hrs' },
-                                    { _id: 'demo-6', name: 'Salon at Home', description: 'Professional salon services at your doorstep — haircut, facial, manicure and more.', price: 499, category: 'Salon', rating: 4.8, reviewCount: 267, duration: '1-2 hrs' },
-                                ].map((service) => (
-                                    <ServiceCard key={service._id} service={service} />
-                                ))
+                                : (
+                                    <div className="col-span-full text-center py-10 text-surface-500">
+                                        No services available at the moment.
+                                    </div>
+                                )
                         }
                     </div>
 

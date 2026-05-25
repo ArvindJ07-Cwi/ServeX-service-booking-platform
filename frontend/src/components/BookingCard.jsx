@@ -3,15 +3,16 @@ import { Calendar, MapPin, Clock, ChevronRight } from 'lucide-react';
 import StatusTimeline from './StatusTimeline';
 
 const statusConfig = {
-    pending: { label: 'Pending', className: 'badge-warning' },
+    pending: { label: 'New Request', className: 'badge-warning' },
     confirmed: { label: 'Confirmed', className: 'badge-primary' },
+    assigned: { label: 'Assigned to You', className: 'badge-primary' },
     accepted: { label: 'Accepted', className: 'badge-primary' },
     in_progress: { label: 'In Progress', className: 'badge-primary' },
     completed: { label: 'Completed', className: 'badge-success' },
     cancelled: { label: 'Cancelled', className: 'badge-danger' },
 };
 
-export default function BookingCard({ booking, showActions = false, onAction }) {
+export default function BookingCard({ booking, showActions = false, onAction, onOtpVerify }) {
     const {
         _id,
         service,
@@ -83,6 +84,11 @@ export default function BookingCard({ booking, showActions = false, onAction }) 
                                     <span className="line-clamp-1">{address}</span>
                                 </span>
                             )}
+                            {booking?.location && (
+                                <span className="flex items-center gap-1 text-primary-600 font-medium">
+                                    📍 {booking.location}
+                                </span>
+                            )}
                         </div>
 
                         {/* Agent/User info */}
@@ -112,13 +118,23 @@ export default function BookingCard({ booking, showActions = false, onAction }) 
             {/* Agent actions */}
             {showActions && status !== 'completed' && status !== 'cancelled' && (
                 <div className="mt-4 flex flex-wrap gap-2 border-t border-surface-100 pt-4">
-                    {status === 'pending' && (
-                        <button
-                            onClick={() => onAction?.(_id, 'accept')}
-                            className="btn-primary text-xs py-2"
-                        >
-                            Accept Booking
-                        </button>
+                    {(status === 'pending' || status === 'assigned') && (
+                        <>
+                            <button
+                                onClick={() => onAction?.(_id, 'accept')}
+                                className="btn-primary text-xs py-2"
+                            >
+                                {status === 'assigned' ? 'Accept Assignment' : 'Accept Request'}
+                            </button>
+                            {status === 'assigned' && (
+                                <button
+                                    onClick={() => onAction?.(_id, 'reject')}
+                                    className="btn-danger text-xs py-2"
+                                >
+                                    Reject
+                                </button>
+                            )}
+                        </>
                     )}
                     {(status === 'accepted' || status === 'confirmed') && (
                         <button
@@ -130,10 +146,11 @@ export default function BookingCard({ booking, showActions = false, onAction }) 
                     )}
                     {status === 'in_progress' && (
                         <button
-                            onClick={() => onAction?.(_id, 'completed')}
+                            onClick={() => onOtpVerify?.(_id)}
                             className="btn-primary text-xs py-2"
+                            id={`complete-otp-btn-${_id}`}
                         >
-                            Mark Complete
+                            🔐 Complete with OTP
                         </button>
                     )}
                 </div>

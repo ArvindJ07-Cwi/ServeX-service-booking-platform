@@ -2,13 +2,13 @@ import { Check, Circle, Loader2 } from 'lucide-react';
 
 const defaultSteps = [
     { key: 'pending', label: 'Booking Placed' },
-    { key: 'confirmed', label: 'Confirmed' },
-    { key: 'accepted', label: 'Agent Assigned' },
+    { key: 'assigned', label: 'Agent Matched' },
+    { key: 'accepted', label: 'Agent Accepted' },
     { key: 'in_progress', label: 'In Progress' },
     { key: 'completed', label: 'Completed' },
 ];
 
-const statusOrder = ['pending', 'confirmed', 'accepted', 'in_progress', 'completed'];
+const statusOrder = ['pending', 'assigned', 'accepted', 'in_progress', 'completed'];
 
 export default function StatusTimeline({ currentStatus = 'pending', steps = defaultSteps }) {
     const currentIndex = statusOrder.indexOf(currentStatus);

@@ -1,7 +1,11 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Star, Clock, ArrowRight } from 'lucide-react';
+import ServiceDetailModal from './ServiceDetailModal';
 
 export default function ServiceCard({ service }) {
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const navigate = useNavigate();
     const {
         _id,
         name = 'Service Name',
@@ -15,11 +19,12 @@ export default function ServiceCard({ service }) {
     } = service || {};
 
     return (
-        <Link
-            to={`/services/${_id}`}
-            className="card-hover group block overflow-hidden"
-            id={`service-card-${_id}`}
-        >
+        <>
+            <div
+                className="card-hover group block overflow-hidden cursor-pointer"
+                id={`service-card-${_id}`}
+                onClick={() => navigate(`/services/${_id}`)}
+            >
             {/* Image */}
             <div className="relative -mx-6 -mt-6 mb-4 aspect-[16/10] overflow-hidden bg-surface-100">
                 {image ? (
@@ -70,12 +75,25 @@ export default function ServiceCard({ service }) {
                         <span className="text-lg font-bold text-surface-900">₹{price}</span>
                         <span className="text-xs text-surface-400 ml-1">onwards</span>
                     </div>
-                    <span className="flex items-center gap-1 text-xs font-medium text-primary-600 opacity-0 translate-x-[-4px] transition-all group-hover:opacity-100 group-hover:translate-x-0">
+                    <button 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsModalOpen(true);
+                        }}
+                        className="flex items-center gap-1 text-xs font-medium text-primary-600 opacity-0 translate-x-[-4px] transition-all group-hover:opacity-100 group-hover:translate-x-0 outline-none"
+                    >
                         Book now <ArrowRight className="h-3.5 w-3.5" />
-                    </span>
+                    </button>
                 </div>
             </div>
-        </Link>
+            </div>
+            
+            <ServiceDetailModal 
+                service={service}
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+            />
+        </>
     );
 }
 

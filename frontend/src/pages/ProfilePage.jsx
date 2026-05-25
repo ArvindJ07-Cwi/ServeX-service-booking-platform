@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { usersAPI } from '../services/api';
-import { User, Mail, Phone, Shield, Loader2, CheckCircle2, AlertCircle, Pencil, X } from 'lucide-react';
+import { User, Mail, Phone, Shield, Loader2, CheckCircle2, AlertCircle, Pencil, X, MapPin, Tag } from 'lucide-react';
 
 export default function ProfilePage() {
     const { user, logout } = useAuth();
@@ -11,7 +11,7 @@ export default function ProfilePage() {
     const [saving, setSaving] = useState(false);
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
-    const [form, setForm] = useState({ name: '', phone: '' });
+    const [form, setForm] = useState({ name: '', phone: '', city: '', area: '' });
 
     useEffect(() => {
         fetchProfile();
@@ -21,7 +21,7 @@ export default function ProfilePage() {
         try {
             const { data } = await usersAPI.getProfile();
             setProfile(data);
-            setForm({ name: data.name || '', phone: data.phone || '' });
+            setForm({ name: data.name || '', phone: data.phone || '', city: data.city || data.location || '', area: data.area || '' });
         } catch {
             setError('Failed to load profile.');
         } finally {
@@ -40,11 +40,16 @@ export default function ProfilePage() {
         try {
             const { data } = await usersAPI.updateProfile(form);
             setProfile(data);
-            // Update per-role stored user so AuthContext stays in sync
-            const role = localStorage.getItem('activeRole') || user?.role || 'user';
-            const userKey = `user_${role}`;
-            const storedUser = JSON.parse(localStorage.getItem(userKey) || '{}');
-            localStorage.setItem(userKey, JSON.stringify({ ...storedUser, name: data.name, phone: data.phone }));
+            // Update sessionStorage so AuthContext stays in sync
+            const storedUser = JSON.parse(sessionStorage.getItem('servx_user') || '{}');
+            sessionStorage.setItem('servx_user', JSON.stringify({
+                ...storedUser,
+                name: data.name,
+                phone: data.phone,
+                city: data.city,
+                area: data.area,
+                location: data.city || data.location
+            }));
             setSuccess('Profile updated successfully!');
             setEditing(false);
             setTimeout(() => setSuccess(''), 3000);
@@ -99,7 +104,7 @@ export default function ProfilePage() {
                         </div>
                         {!editing && (
                             <button
-                                onClick={() => { setEditing(true); setForm({ name: profile?.name || '', phone: profile?.phone || '' }); }}
+                                onClick={() => { setEditing(true); setForm({ name: profile?.name || '', phone: profile?.phone || '', city: profile?.city || profile?.location || '', area: profile?.area || '' }); }}
                                 className="btn-secondary text-xs px-3 py-2"
                             >
                                 <Pencil className="h-3.5 w-3.5" /> Edit
@@ -133,6 +138,42 @@ export default function ProfilePage() {
                                     />
                                 </div>
                             </div>
+                            <div>
+                                <label className="block text-sm font-medium text-surface-700 mb-1.5">City</label>
+                                <div className="relative">
+                                    <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-400" />
+                                    <select
+                                        value={form.city}
+                                        onChange={(e) => setForm(f => ({ ...f, city: e.target.value }))}
+                                        className="input-field pl-10"
+                                    >
+                                        <option value="">Select city</option>
+                                        <option value="Mumbai">Mumbai</option>
+                                        <option value="Thane">Thane</option>
+                                        <option value="Navi Mumbai">Navi Mumbai</option>
+                                        <option value="Pune">Pune</option>
+                                        <option value="Delhi">Delhi</option>
+                                        <option value="Bangalore">Bangalore</option>
+                                        <option value="Hyderabad">Hyderabad</option>
+                                        <option value="Chennai">Chennai</option>
+                                        <option value="Kolkata">Kolkata</option>
+                                        <option value="Ahmedabad">Ahmedabad</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-surface-700 mb-1.5">Area / Locality <span className="text-surface-400 font-normal">(Optional)</span></label>
+                                <div className="relative">
+                                    <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-400" />
+                                    <input
+                                        value={form.area}
+                                        onChange={(e) => setForm(f => ({ ...f, area: e.target.value }))}
+                                        className="input-field pl-10"
+                                        placeholder="e.g. Andheri West"
+                                        maxLength={100}
+                                    />
+                                </div>
+                            </div>
                             <div className="flex gap-3 pt-2">
                                 <button type="submit" disabled={saving} className="btn-primary">
                                     {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</> : 'Save Changes'}
@@ -156,6 +197,26 @@ export default function ProfilePage() {
                                     <p className="text-sm font-medium text-surface-900">{profile?.phone || 'Not set'}</p>
                                 </div>
                             </div>
+                            {(profile?.city || profile?.location) && (
+                                <div className="flex items-center gap-3 text-surface-600">
+                                    <MapPin className="h-4 w-4 text-surface-400" />
+                                    <div>
+                                        <p className="text-xs text-surface-400">City / Area</p>
+                                        <p className="text-sm font-medium text-surface-900">
+                                            {profile.city || profile.location}{profile?.area ? ` — ${profile.area}` : ''}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                            {profile?.service_category && (
+                                <div className="flex items-center gap-3 text-surface-600">
+                                    <Tag className="h-4 w-4 text-surface-400" />
+                                    <div>
+                                        <p className="text-xs text-surface-400">Service Category</p>
+                                        <p className="text-sm font-medium text-surface-900">{profile.service_category}</p>
+                                    </div>
+                                </div>
+                            )}
                             <div className="flex items-center gap-3 text-surface-600">
                                 <User className="h-4 w-4 text-surface-400" />
                                 <div>

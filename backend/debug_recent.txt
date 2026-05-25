@@ -1,0 +1,42 @@
+[
+  {
+    "id": 19,
+    "status": "pending",
+    "payment_status": "paid",
+    "service_id": 4,
+    "service_category": "appliance",
+    "agent_id": null
+  },
+  {
+    "id": 18,
+    "status": "completed",
+    "payment_status": "paid",
+    "service_id": 7,
+    "service_category": "electrical",
+    "agent_id": 19
+  },
+  {
+    "id": 17,
+    "status": "cancelled",
+    "payment_status": "paid",
+    "service_id": 7,
+    "service_category": "electrical",
+    "agent_id": null
+  },
+  {
+    "id": 16,
+    "status": "cancelled",
+    "payment_status": "paid",
+    "service_id": 7,
+    "service_category": "Electrical",
+    "agent_id": null
+  },
+  {
+    "id": 15,
+    "status": "cancelled",
+    "payment_status": "paid",
+    "service_id": 12,
+    "service_category": "Painting",
+    "agent_id": null
+  }
+]

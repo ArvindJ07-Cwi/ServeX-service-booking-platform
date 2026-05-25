@@ -81,11 +81,28 @@ const deleteNotification = asyncHandler(async (req, res) => {
     res.json({ message: 'Notification deleted' });
 });
 
-// Helper function to notify all agents about new booking
-const notifyAgentsAboutNewBooking = async (bookingId, serviceName, userName, date, time) => {
+// Helper function to notify matching agents about new booking
+const notifyAgentsAboutNewBooking = async (bookingId, serviceName, userName, date, time, serviceCategory = null, location = null) => {
     try {
-        // Get all agents
-        const [agents] = await pool.query('SELECT id FROM users WHERE role = "agent"');
+        let query = 'SELECT id FROM users WHERE role = "agent"';
+        const params = [];
+
+        // Filter by matching service_category and location when available
+        if (serviceCategory) {
+            query += ' AND LOWER(service_category) = LOWER(?)';
+            params.push(serviceCategory);
+        }
+        if (location) {
+            query += ' AND LOWER(location) = LOWER(?)';
+            params.push(location);
+        }
+
+        let [agents] = await pool.query(query, params);
+
+        // Fallback: if no matching agents found, notify all agents
+        if (agents.length === 0) {
+            [agents] = await pool.query('SELECT id FROM users WHERE role = "agent"');
+        }
         
         const title = 'New Booking Available';
         const message = `New booking for ${serviceName} by ${userName} on ${date} at ${time}`;
@@ -155,6 +172,18 @@ const notifyUserAboutBookingStatus = async (userId, bookingId, status, serviceNa
     }
 };
 
+// Helper function to notify user about payment success
+const notifyUserPaymentSuccess = async (userId, bookingId, serviceName, amount) => {
+    try {
+        const title = 'Payment Successful';
+        const message = `Your payment of ₹${amount} for ${serviceName} was successful.`;
+        await createNotification(userId, bookingId, 'payment_success', title, message);
+        console.log(`✅ Notified user #${userId} about payment success for booking #${bookingId}`);
+    } catch (error) {
+        console.error('Error notifying user about payment:', error);
+    }
+};
+
 module.exports = {
     getNotifications,
     getUnreadCount,
@@ -164,5 +193,6 @@ module.exports = {
     createNotification,
     notifyAgentsAboutNewBooking,
     notifyAdminsAboutNewBooking,
-    notifyUserAboutBookingStatus
+    notifyUserAboutBookingStatus,
+    notifyUserPaymentSuccess
 };

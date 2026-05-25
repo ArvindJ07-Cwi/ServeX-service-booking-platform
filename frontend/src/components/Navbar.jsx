@@ -3,6 +3,8 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { ShoppingCart, Search, User } from 'lucide-react';
 import { useState } from 'react';
+import Logo from './Logo';
+import NotificationDropdown from './NotificationDropdown';
 
 export default function Navbar() {
     const { isAuthenticated, logout, user } = useAuth();
@@ -22,12 +24,10 @@ export default function Navbar() {
         <nav className="sticky top-0 z-50 border-b border-surface-200 bg-white/80 backdrop-blur-md">
             <div className="section-container flex h-16 items-center justify-between gap-4">
                 {/* Logo */}
-                <Link to="/" className="flex items-center gap-2 text-2xl font-bold text-primary-600 flex-shrink-0">
-                    <div className="h-8 w-8 rounded-lg bg-primary-600 text-white flex items-center justify-center">S</div>
-                    <span className="hidden sm:inline">ServeX</span>
-                </Link>
+                <Logo size="small" />
 
-                {/* Search Bar (center) */}
+                {/* Search Bar (center) — hide for agents */}
+                {(!isAuthenticated || user?.role !== 'agent') && (
                 <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md mx-4">
                     <div className="relative w-full">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-400" />
@@ -40,21 +40,27 @@ export default function Navbar() {
                         />
                     </div>
                 </form>
+                )}
 
-                {/* Desktop Nav */}
+                {/* Desktop Nav — hide for agents */}
+                {(!isAuthenticated || user?.role !== 'agent') && (
                 <div className="hidden md:flex items-center gap-6">
                     <Link to="/services" className="text-sm font-medium text-surface-600 hover:text-primary-600">Services</Link>
                     <Link to="/about" className="text-sm font-medium text-surface-600 hover:text-primary-600">About</Link>
                 </div>
+                )}
 
                 {/* Actions */}
                 <div className="flex items-center gap-3 flex-shrink-0">
-                    {/* Mobile Search Icon */}
+                    {/* Mobile Search Icon — hide for agents */}
+                    {(!isAuthenticated || user?.role !== 'agent') && (
                     <Link to="/services" className="md:hidden p-2 text-surface-600 hover:text-primary-600 transition-colors">
                         <Search className="h-5 w-5" />
                     </Link>
+                    )}
 
-                    {/* Cart Icon */}
+                    {/* Cart Icon — hide for agents */}
+                    {(!isAuthenticated || user?.role !== 'agent') && (
                     <Link to="/cart" className="relative p-2 text-surface-600 hover:text-primary-600 transition-colors">
                         <ShoppingCart className="h-5 w-5" />
                         {cartItems.length > 0 && (
@@ -63,6 +69,7 @@ export default function Navbar() {
                             </span>
                         )}
                     </Link>
+                    )}
 
                     {isAuthenticated ? (
                         <div className="flex items-center gap-3">
@@ -72,6 +79,7 @@ export default function Navbar() {
                             >
                                 Dashboard
                             </Link>
+                            <NotificationDropdown />
                             <Link
                                 to="/profile"
                                 className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100 text-primary-700 text-sm font-semibold hover:bg-primary-200 transition-colors"

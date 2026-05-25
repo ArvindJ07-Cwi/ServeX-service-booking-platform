@@ -10,6 +10,8 @@ import { useEffect } from 'react';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import UserDashboard from './pages/UserDashboard';
 import AgentDashboard from './pages/AgentDashboard';
 import AdminDashboard from './pages/AdminDashboard';
@@ -43,6 +45,8 @@ export default function App() {
                 <Route path="/" element={<Home />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password/:token" element={<ResetPassword />} />
 
                 {/* Public Service Routes */}
                 <Route path="/services" element={<ServicesPage />} />

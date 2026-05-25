@@ -9,7 +9,10 @@ const {
     completeBooking,
     cancelBooking,
     getAllBookings, // For admin
-    getBookingById
+    getBookingById,
+    generateOtp,
+    verifyOtp,
+    rejectBooking
 } = require('../controllers/bookingController');
 const { protect, admin, agent } = require('../middleware/authMiddleware');
 
@@ -21,8 +24,13 @@ router.get('/:id', protect, getBookingById); // Generic detail view
 
 // Actions
 router.patch('/:id/cancel', protect, cancelBooking);
+router.patch('/:id/reject', protect, agent, rejectBooking);
 router.patch('/:id/accept', protect, agent, acceptBooking);
 router.patch('/:id/start', protect, agent, startBooking);
 router.patch('/:id/complete', protect, agent, completeBooking);
+
+// OTP
+router.post('/:id/generate-otp', protect, generateOtp);
+router.post('/:id/verify-otp', protect, agent, verifyOtp);
 
 module.exports = router;

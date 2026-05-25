@@ -22,18 +22,26 @@ export default function HeroSection() {
     };
 
     return (
-        <section className="relative overflow-hidden bg-gradient-to-br from-surface-950 via-surface-900 to-primary-950 pt-32 pb-20 sm:pt-40 sm:pb-28">
+        <section className="relative overflow-hidden pt-32 pb-20 sm:pt-40 sm:pb-28 bg-surface-950">
+            {/* Background Image */}
+            <div 
+                className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
+                style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1581578731548-c64695cc6952?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80")' }}
+            />
+            {/* Overlay */}
+            <div className="absolute inset-0 z-0 bg-gradient-to-br from-surface-950/95 via-surface-900/90 to-primary-950/80" />
+            
             {/* Background pattern */}
-            <div className="absolute inset-0 opacity-[0.03]" style={{
+            <div className="absolute inset-0 z-0 opacity-[0.03]" style={{
                 backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
                 backgroundSize: '40px 40px',
             }} />
 
             {/* Gradient orbs */}
-            <div className="absolute top-20 -left-40 h-80 w-80 rounded-full bg-primary-600/20 blur-[100px]" />
-            <div className="absolute bottom-10 right-0 h-60 w-60 rounded-full bg-primary-500/10 blur-[80px]" />
+            <div className="absolute top-20 -left-40 h-80 w-80 rounded-full bg-primary-600/20 blur-[100px] z-0" />
+            <div className="absolute bottom-10 right-0 h-60 w-60 rounded-full bg-primary-500/10 blur-[80px] z-0" />
 
-            <div className="section-container relative">
+            <div className="section-container relative z-10">
                 <div className="mx-auto max-w-3xl text-center">
                     {/* Badge */}
                     <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium text-primary-300 backdrop-blur-sm animate-fade-in mb-6">

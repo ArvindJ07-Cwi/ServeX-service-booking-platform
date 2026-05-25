@@ -2,6 +2,22 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { bookingsAPI } from '../services/api';
 import BookingCard, { BookingCardSkeleton } from '../components/BookingCard';
+import OtpVerifyModal from '../components/OtpVerifyModal';
+
+const getCategoryIcon = (cat) => {
+    switch (cat?.toLowerCase()) {
+        case 'electrical': return '⚡';
+        case 'plumbing': return '🔧';
+        case 'painting': return '🎨';
+        case 'cleaning': return '🧹';
+        case 'appliance': return '🔌';
+        case 'carpentry': return '🪚';
+        case 'salon': return '💇';
+        case 'pest control': return '🐜';
+        default: return '💼';
+    }
+};
+
 import {
     Briefcase,
     DollarSign,
@@ -26,6 +42,7 @@ export default function AgentDashboard() {
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(null);
     const [error, setError] = useState('');
+    const [otpBookingId, setOtpBookingId] = useState(null);
     const isMounted = useRef(true);
 
     const fetchData = useCallback(async (showLoader = false) => {
@@ -64,6 +81,8 @@ export default function AgentDashboard() {
         try {
             if (action === 'accept') {
                 await bookingsAPI.accept(id);
+            } else if (action === 'reject') {
+                await bookingsAPI.reject(id);
             } else {
                 await bookingsAPI.updateStatus(id, action);
             }
@@ -81,15 +100,26 @@ export default function AgentDashboard() {
 
     const currentBookings = activeTab === 'available' ? availableBookings : myBookings;
 
-    return (
+    const content = (
         <div className="min-h-screen bg-surface-50 pt-20">
             <div className="section-container py-8">
                 {/* Header */}
                 <div className="mb-8">
-                    <h1 className="page-header">
-                        Agent Dashboard
-                    </h1>
-                    <p className="page-subtitle">Welcome, {user?.name || 'Agent'}. Manage your jobs and earnings.</p>
+                    <div className="flex items-center gap-3 flex-wrap">
+                        <h1 className="page-header mb-0">Agent Dashboard</h1>
+                        {user?.service_category && (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-100 px-3 py-1 text-sm font-medium text-primary-700 shadow-sm border border-primary-200">
+                                {getCategoryIcon(user.service_category)} {user.service_category}
+                            </span>
+                        )}
+                        {(user?.city || user?.location) && (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700 shadow-sm border border-emerald-200">
+                                📍 {user.city || user.location}
+                                {user?.area && <span className="opacity-75">&nbsp;— {user.area}</span>}
+                            </span>
+                        )}
+                    </div>
+                    <p className="page-subtitle mt-2">Welcome, {user?.name || 'Agent'}. Showing bookings matching your service area and category.</p>
                 </div>
 
                 {/* Stats */}
@@ -199,6 +229,7 @@ export default function AgentDashboard() {
                                     booking={booking}
                                     showActions={true}
                                     onAction={handleAction}
+                                    onOtpVerify={(id) => setOtpBookingId(id)}
                                 />
                             </div>
                         ))
@@ -216,5 +247,23 @@ export default function AgentDashboard() {
                 </div>
             </div>
         </div>
+    );
+
+    return (
+        <>
+            {content}
+
+            {/* OTP Verification Modal */}
+            {otpBookingId && (
+                <OtpVerifyModal
+                    bookingId={otpBookingId}
+                    onClose={() => setOtpBookingId(null)}
+                    onVerified={() => {
+                        setOtpBookingId(null);
+                        fetchData();
+                    }}
+                />
+            )}
+        </>
     );
 }
