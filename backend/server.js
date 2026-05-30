@@ -16,6 +16,7 @@ const server = http.createServer(app);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CORS — restrict to FRONTEND_URL in production
+// Also allow Vercel preview deployments (URLs include hash suffixes)
 // ─────────────────────────────────────────────────────────────────────────────
 const allowedOrigins = [
     process.env.FRONTEND_URL || 'http://localhost:5173',
@@ -24,11 +25,29 @@ const allowedOrigins = [
     'http://localhost:3000',
 ].filter(Boolean);
 
+// Extract the base domain from FRONTEND_URL for Vercel preview matching
+// e.g. "https://serve-x-service-booking-platform.vercel.app" → "serve-x-service-booking-platform"
+const frontendUrl = process.env.FRONTEND_URL || '';
+const vercelMatch = frontendUrl.match(/^https?:\/\/(.+?)\.vercel\.app/);
+const vercelProjectBase = vercelMatch ? vercelMatch[1] : null;
+
 app.use(cors({
     origin: (origin, callback) => {
         // Allow requests with no origin (Postman, curl, server-to-server)
         if (!origin) return callback(null, true);
+        // Exact match
         if (allowedOrigins.includes(origin)) return callback(null, true);
+        // Vercel preview URLs: serve-x-service-booking-platform-HASH.vercel.app
+        if (vercelProjectBase && origin.includes('.vercel.app')) {
+            const originHost = origin.replace(/^https?:\/\//, '');
+            if (originHost.startsWith(vercelProjectBase) && originHost.endsWith('.vercel.app')) {
+                return callback(null, true);
+            }
+        }
+        // Render preview URLs: *.onrender.com
+        if (origin.endsWith('.onrender.com')) {
+            return callback(null, true);
+        }
         logger.warn(`[CORS] Blocked origin: ${origin}`);
         callback(new Error(`CORS: origin ${origin} not allowed`));
     },

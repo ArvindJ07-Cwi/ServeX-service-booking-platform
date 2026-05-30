@@ -14,9 +14,10 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  // Enable SSL for cloud-hosted MySQL (PlanetScale, Aiven, Railway, etc.)
+  // Enable SSL for cloud-hosted MySQL (Railway, PlanetScale, Aiven, etc.)
+  // Railway uses self-signed certs, so rejectUnauthorized must be false
   ...(process.env.NODE_ENV === 'production' && {
-    ssl: { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTH !== 'false' }
+    ssl: { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTH === 'true' }
   }),
 });
 
