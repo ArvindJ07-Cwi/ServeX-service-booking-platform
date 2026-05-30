@@ -1,0 +1,80 @@
+# Render Blueprint — ServeX
+# https://render.com/docs/blueprint-spec
+#
+# Deploy this repo with two services:
+#   1. Backend (Web Service) — Node.js API
+#   2. Frontend (Static Site) — Vite React SPA
+
+services:
+  # ─── Backend API ──────────────────────────────────────────────────────────────
+  - type: web
+    name: servex-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.js
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://servex-frontend.onrender.com
+      # Database — set these manually in the Render dashboard
+      - key: DB_HOST
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: DB_PORT
+        sync: false
+      # SMTP — set these manually
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: FROM_NAME
+        sync: false
+      - key: FROM_EMAIL
+        sync: false
+      # Razorpay — set these manually
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      # Cloudinary — set these manually
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+  # ─── Frontend Static Site ─────────────────────────────────────────────────────
+  - type: web
+    name: servex-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: SAMEORIGIN
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://servex-backend.onrender.com/api

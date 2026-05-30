@@ -13,7 +13,11 @@ const pool = mysql.createPool({
   port: process.env.DB_PORT || 3306,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  // Enable SSL for cloud-hosted MySQL (PlanetScale, Aiven, Railway, etc.)
+  ...(process.env.NODE_ENV === 'production' && {
+    ssl: { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTH !== 'false' }
+  }),
 });
 
 /**
@@ -201,7 +205,14 @@ const initializeDatabase = async () => {
     connection.release();
     console.log('Database tables verified/created successfully.');
   } catch (error) {
-    console.error('Error initializing database:', error);
+    console.error('❌ Error initializing database:', error.message);
+    console.error('   DB_HOST:', process.env.DB_HOST || 'NOT SET (defaulting to localhost)');
+    console.error('   DB_USER:', process.env.DB_USER || 'NOT SET (defaulting to root)');
+    console.error('   DB_NAME:', process.env.DB_NAME || 'NOT SET');
+    console.error('   DB_PORT:', process.env.DB_PORT || '3306');
+    console.error('   NODE_ENV:', process.env.NODE_ENV || 'development');
+    console.error('   Error code:', error.code);
+    // Don\'t crash the server — health endpoints will report the issue
   }
 };
 

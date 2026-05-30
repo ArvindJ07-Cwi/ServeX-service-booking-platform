@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const { initializeDatabase } = require('./config/db');
+const { initializeDatabase, pool } = require('./config/db');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -108,6 +108,42 @@ app.get('/api/health/email', async (_req, res) => {
         reason: result.reason || null,
         user: (process.env.SMTP_USER || '').trim() || 'not configured',
         host: (process.env.SMTP_HOST || '').trim() || 'not configured',
+        timestamp: new Date().toISOString(),
+    });
+});
+
+app.get('/api/health/db', async (_req, res) => {
+    try {
+        const [rows] = await pool.query('SELECT 1 AS ok');
+        const [svcCount] = await pool.query('SELECT COUNT(*) AS count FROM services');
+        res.json({
+            status: 'ok',
+            database: 'connected',
+            host: (process.env.DB_HOST || 'localhost').replace(/./g, (c, i) => i < 4 ? c : '*'),
+            services_count: svcCount[0]?.count || 0,
+            timestamp: new Date().toISOString(),
+        });
+    } catch (err) {
+        logger.error('[Health/DB] Database connection failed:', err.message);
+        res.status(503).json({
+            status: 'error',
+            database: 'disconnected',
+            error: err.message,
+            code: err.code || 'UNKNOWN',
+            timestamp: new Date().toISOString(),
+        });
+    }
+});
+
+// Debug endpoint — shows non-sensitive config to verify env vars are loaded
+app.get('/api/debug/config', (_req, res) => {
+    res.json({
+        NODE_ENV: process.env.NODE_ENV || 'not set',
+        FRONTEND_URL: process.env.FRONTEND_URL || 'not set',
+        DB_HOST: process.env.DB_HOST ? '***configured***' : 'NOT SET',
+        DB_NAME: process.env.DB_NAME || 'NOT SET',
+        SMTP_HOST: process.env.SMTP_HOST ? '***configured***' : 'NOT SET',
+        CORS_ORIGINS: allowedOrigins,
         timestamp: new Date().toISOString(),
     });
 });

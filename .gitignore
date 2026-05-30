@@ -4,11 +4,17 @@ node_modules/
 .pnp.js
 
 # Environment files — NEVER commit real credentials
-.env
+# Only ignore the exact .env files (which contain secrets)
+# Allow .env.development (safe — only has localhost URLs)
+# Allow .env.example (templates for documentation)
+**/.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env.production
+!.env.development
+!.env.example
 
 # Build output
 dist/
