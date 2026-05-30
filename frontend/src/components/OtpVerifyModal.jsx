@@ -97,52 +97,52 @@ export default function OtpVerifyModal({ bookingId, onClose, onVerified }) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
             <div
-                className="relative w-full max-w-md mx-4 bg-white rounded-2xl shadow-2xl overflow-hidden animate-scale-in"
+                className="relative w-full max-w-md bg-white rounded-xl shadow-lg border border-surface-200 overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-5 text-white">
-                    <button
-                        onClick={onClose}
-                        className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors"
-                    >
-                        <X className="h-5 w-5" />
-                    </button>
+                <div className="flex items-center justify-between px-6 py-4 border-b border-surface-200">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20">
-                            <ShieldCheck className="h-6 w-6" />
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
+                            <ShieldCheck className="h-5 w-5" />
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold">OTP Verification</h2>
-                            <p className="text-sm text-primary-100">Enter the 6-digit code from the customer</p>
+                            <h2 className="text-base font-semibold text-surface-900">OTP Verification</h2>
+                            <p className="text-xs text-surface-500">Enter the 6-digit code from the customer</p>
                         </div>
                     </div>
+                    <button
+                        onClick={onClose}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-surface-400 hover:text-surface-600 hover:bg-surface-100 transition-colors"
+                    >
+                        <X className="h-4 w-4" />
+                    </button>
                 </div>
 
                 {/* Body */}
                 <div className="px-6 py-6">
                     {success ? (
-                        <div className="text-center py-6">
-                            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100 mx-auto mb-4">
-                                <CheckCircle2 className="h-8 w-8 text-green-600" />
+                        <div className="flex flex-col items-center py-4 text-center">
+                            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-50 border border-green-200 mb-4">
+                                <CheckCircle2 className="h-7 w-7 text-green-600" />
                             </div>
-                            <h3 className="text-lg font-bold text-surface-900">Verified Successfully!</h3>
+                            <h3 className="text-lg font-semibold text-surface-900">Verified Successfully!</h3>
                             <p className="text-sm text-surface-500 mt-1">Booking has been marked as completed.</p>
                         </div>
                     ) : (
                         <>
                             {/* Error */}
                             {error && (
-                                <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-3">
-                                    <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
+                                <div className="mb-5 flex items-center gap-2.5 rounded-lg border border-red-200 bg-red-50 p-3">
+                                    <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
                                     <p className="text-sm text-red-600">{error}</p>
                                 </div>
                             )}
 
                             {/* OTP Inputs */}
-                            <div className="flex justify-center gap-3 mb-6" onPaste={handlePaste}>
+                            <div className="flex justify-center gap-2.5 mb-6" onPaste={handlePaste}>
                                 {otp.map((digit, index) => (
                                     <input
                                         key={index}
@@ -153,8 +153,8 @@ export default function OtpVerifyModal({ bookingId, onClose, onVerified }) {
                                         value={digit}
                                         onChange={(e) => handleChange(index, e.target.value)}
                                         onKeyDown={(e) => handleKeyDown(index, e)}
-                                        className={`w-12 h-14 text-center text-xl font-bold rounded-xl border-2 transition-all duration-200 outline-none
-                                            ${digit ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-surface-200 bg-surface-50 text-surface-900'}
+                                        className={`w-12 h-14 text-center text-xl font-semibold rounded-lg border-2 transition-all duration-150 outline-none
+                                            ${digit ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-surface-200 bg-white text-surface-900'}
                                             focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20`}
                                         id={`otp-input-${index}`}
                                     />
@@ -165,13 +165,13 @@ export default function OtpVerifyModal({ bookingId, onClose, onVerified }) {
                             <button
                                 onClick={handleVerify}
                                 disabled={loading || otp.join('').length !== 6}
-                                className="btn-primary w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="btn-primary w-full justify-center py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
                                 id="verify-otp-btn"
                             >
                                 {loading ? (
                                     <>
                                         <Loader2 className="h-4 w-4 animate-spin" />
-                                        Verifying...
+                                        Verifying…
                                     </>
                                 ) : (
                                     <>

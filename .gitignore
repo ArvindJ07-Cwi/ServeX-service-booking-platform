@@ -1,8 +1,55 @@
+# Dependencies
 node_modules/
+.pnp
+.pnp.js
+
+# Environment files — NEVER commit real credentials
 .env
-.env.*
-backend/.env*
-frontend/.env*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build output
 dist/
 build/
+.next/
+out/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V3
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor directories
+.vscode/
+.idea/
+*.swp
+*.swo
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Debug files
+debug_out.txt
+debug_json.txt
+debug_recent.txt
+debug.js
+debug2.js
+debug3.js
+
+# Vite cache
+.vite/

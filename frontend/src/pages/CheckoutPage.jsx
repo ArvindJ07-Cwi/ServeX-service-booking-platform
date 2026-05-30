@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { paymentAPI, couponAPI } from '../services/api';
-import { Loader2, Calendar, MapPin, AlertCircle, CreditCard, Shield, Tag } from 'lucide-react';
+import { Loader2, Calendar, MapPin, AlertCircle, CreditCard, Shield, Tag, Check, ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { CityOptions } from '../constants/cities.jsx';
 
-// Helper: Load Razorpay script dynamically (ensures it is available)
+// Helper: Load Razorpay script dynamically
 function loadRazorpayScript() {
     return new Promise((resolve) => {
         if (window.Razorpay) {
@@ -33,7 +35,7 @@ export default function CheckoutPage() {
         date: '',
         time: '',
         notes: '',
-        location: user?.city || user?.location || '',  // legacy compat
+        location: user?.city || user?.location || '',
         city: user?.city || user?.location || '',
         area: user?.area || '',
     });
@@ -73,30 +75,20 @@ export default function CheckoutPage() {
         setForm({ ...form, [e.target.name]: e.target.value });
     };
 
+    const isFormValid = form.address && form.date && form.time && form.city;
+
     // Process Razorpay payment for a single cart item
     const processPaymentForItem = (item) => {
         return new Promise(async (resolve, reject) => {
             try {
-                // Ensure Razorpay SDK is loaded
                 const scriptLoaded = await loadRazorpayScript();
                 if (!scriptLoaded) {
                     reject(new Error('Failed to load Razorpay SDK. Check your internet connection.'));
                     return;
                 }
 
-                // Step 1: Create order on backend
-                const itemPrice = Number(item.price);
-                // Note: itemTotal logic in processPaymentForItem is largely just a local visual log now, backend computes exact
-                const scaledSubtotal = finalSubtotal; // If multiple items, we rely on backend for exact per-item total. Here we just assume 1 item.
-                const itemTax = finalTax;
-                const itemPlatformFee = platformFee;
-                const itemTotal = finalTotal;
-
-                console.log('====== PAYMENT FLOW START ======');
-                console.log('Item:', item.name, '| Price:', itemPrice, '| Total:', itemTotal);
-
                 const { data } = await paymentAPI.createOrder({
-                    amount: itemTotal,
+                    amount: finalTotal,
                     service_id: item._id,
                     date: form.date,
                     time: form.time,
@@ -108,12 +100,6 @@ export default function CheckoutPage() {
                     coupon_code: appliedCoupon ? appliedCoupon.coupon_code : ''
                 });
 
-                console.log('✅ Order created:', data);
-                console.log('Order ID:', data.order_id);
-                console.log('Amount (paise):', data.amount);
-                console.log('Key ID:', data.key_id);
-
-                // Step 2: Build Razorpay checkout options
                 const options = {
                     key: data.key_id,
                     amount: data.amount,
@@ -121,13 +107,7 @@ export default function CheckoutPage() {
                     order_id: data.order_id,
                     name: 'ServeX',
                     description: `Payment for ${item.name}`,
-
-                    // Payment success callback
                     handler: async function (response) {
-                        console.log('✅ Payment successful! Razorpay response:', response);
-                        console.log('Razorpay Order ID:', response.razorpay_order_id);
-                        console.log('Razorpay Payment ID:', response.razorpay_payment_id);
-                        console.log('Razorpay Signature:', response.razorpay_signature ? '(received)' : '(MISSING!)');
                         try {
                             const verifyRes = await paymentAPI.verify({
                                 razorpay_order_id: response.razorpay_order_id,
@@ -143,26 +123,16 @@ export default function CheckoutPage() {
                                 area: form.area,
                                 coupon_code: appliedCoupon ? appliedCoupon.coupon_code : ''
                             });
-                            console.log('✅ Verification response:', verifyRes.data);
                             resolve(verifyRes.data);
                         } catch (verifyErr) {
-                            console.error('❌ Verification failed:', verifyErr.response?.data || verifyErr.message);
                             reject(verifyErr);
                         }
                     },
-
-                    // Prefill user details — name and email only
-                    // DO NOT prefill contact so Razorpay does not auto-skip to QR
                     prefill: {
                         name: user?.name || '',
                         email: user?.email || ''
                     },
-
-                    // Do NOT remember customer — this causes Razorpay to auto-select
-                    // payment method based on phone and skip UPI ID option
                     remember_customer: false,
-
-                    // Explicitly enable all payment methods
                     method: {
                         upi: true,
                         card: true,
@@ -171,34 +141,21 @@ export default function CheckoutPage() {
                         emi: false,
                         paylater: false
                     },
-
-                    theme: {
-                        color: '#6366f1'
-                    },
-
+                    theme: { color: '#2563EB' },
                     modal: {
                         ondismiss: function () {
-                            console.warn('⚠️ Payment popup dismissed by user');
                             reject(new Error('Payment cancelled by user'));
                         },
                         confirm_close: true
                     }
                 };
 
-                console.log('Opening Razorpay popup...');
                 const rzp = new window.Razorpay(options);
-
                 rzp.on('payment.failed', function (response) {
-                    console.error('❌ Payment failed:', response.error);
-                    console.error('Error code:', response.error?.code);
-                    console.error('Error description:', response.error?.description);
-                    console.error('Error reason:', response.error?.reason);
                     reject(new Error(response.error?.description || 'Payment failed. Please try again.'));
                 });
-
                 rzp.open();
             } catch (err) {
-                console.error('❌ Payment flow error:', err);
                 reject(err);
             }
         });
@@ -210,27 +167,20 @@ export default function CheckoutPage() {
         setError(null);
 
         try {
-            // Process payment for each cart item sequentially
-            // (Razorpay popup can only open one at a time)
             let lastBookingId = null;
-
             for (const item of cartItems) {
                 const result = await processPaymentForItem(item);
                 if (result?.booking?._id) {
                     lastBookingId = result.booking._id;
                 }
             }
-
-            // All payments successful → clear cart and redirect
             clearCart();
-
             if (lastBookingId) {
                 navigate(`/bookings/${lastBookingId}`);
             } else {
                 navigate('/dashboard');
             }
         } catch (err) {
-            console.error('Payment error:', err);
             const msg = err.response?.data?.message || err.message || 'Payment failed. Please try again.';
             setError(msg);
             setLoading(false);
@@ -246,95 +196,98 @@ export default function CheckoutPage() {
     if (cartItems.length === 0 && !loading) return null;
 
     return (
-        <div className="section-container py-12 animate-fade-in max-w-4xl">
-            <h1 className="text-3xl font-bold text-surface-900 mb-8">Checkout</h1>
+        <div className="section-container py-8 lg:py-12 max-w-5xl">
+            {/* Header */}
+            <div className="mb-8">
+                <Link to="/cart" className="inline-flex items-center gap-1 text-sm text-surface-500 hover:text-surface-700 transition-colors mb-4">
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to cart
+                </Link>
+                <h1 className="page-header">Checkout</h1>
+                <p className="page-subtitle">Complete your booking details below</p>
+            </div>
 
-            <div className="grid gap-12 lg:grid-cols-2">
+            <div className="grid gap-8 lg:grid-cols-5">
+                {/* Form Section */}
+                <div className="lg:col-span-3 space-y-6">
+                    {/* Service Location */}
+                    <div className="card p-5">
+                        <div className="flex items-center gap-2 mb-5">
+                            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
+                                <MapPin className="h-4 w-4" />
+                            </div>
+                            <h2 className="text-base font-semibold text-surface-900">Service Location</h2>
+                        </div>
 
-                {/* Form */}
-                <div className="space-y-8">
-                    <div className="bg-white p-6 rounded-2xl border border-surface-200 shadow-sm">
-                        <h2 className="text-xl font-bold text-surface-900 mb-6 flex items-center gap-2">
-                            <MapPin className="h-5 w-5 text-primary-600" />
-                            Service Location
-                        </h2>
-
-                        {/* Proximity banner */}
                         {form.city && (
-                            <div className="mb-4 flex items-center gap-2 rounded-xl bg-primary-50 border border-primary-200 px-4 py-2.5">
-                                <MapPin className="h-4 w-4 text-primary-500 shrink-0" />
-                                <span className="text-sm font-medium text-primary-700">
-                                    Showing professionals near <strong>{form.city}</strong>
-                                    {form.area && <> — {form.area}</>}
-                                </span>
+                            <div className="mb-4 flex items-center gap-2 rounded-lg bg-primary-50 px-3 py-2 text-sm text-primary-700">
+                                <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+                                Showing professionals near <strong>{form.city}</strong>
+                                {form.area && <> — {form.area}</>}
                             </div>
                         )}
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-surface-700 mb-1">Full Address</label>
+                                <label className="block text-sm font-medium text-surface-700 mb-1.5">
+                                    Address <span className="text-danger-500">*</span>
+                                </label>
                                 <textarea
                                     name="address"
                                     value={form.address}
                                     onChange={handleChange}
                                     required
-                                    rows={3}
+                                    rows={2}
                                     placeholder="Enter your complete address..."
                                     className="input-field resize-none"
                                 />
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-surface-700 mb-1">
-                                    City <span className="text-red-500">*</span>
-                                    <span className="text-surface-400 font-normal ml-1">(helps assign a nearby professional)</span>
-                                </label>
-                                <select
-                                    name="city"
-                                    id="checkout-city"
-                                    value={form.city}
-                                    onChange={(e) => setForm({ ...form, city: e.target.value, location: e.target.value })}
-                                    className="input-field"
-                                    required
-                                >
-                                    <option value="">Select your city</option>
-                                    <option value="Mumbai">Mumbai</option>
-                                    <option value="Thane">Thane</option>
-                                    <option value="Navi Mumbai">Navi Mumbai</option>
-                                    <option value="Pune">Pune</option>
-                                    <option value="Delhi">Delhi</option>
-                                    <option value="Bangalore">Bangalore</option>
-                                    <option value="Hyderabad">Hyderabad</option>
-                                    <option value="Chennai">Chennai</option>
-                                    <option value="Kolkata">Kolkata</option>
-                                    <option value="Ahmedabad">Ahmedabad</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-surface-700 mb-1">
-                                    Area / Locality <span className="text-surface-400 font-normal">(Optional)</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    name="area"
-                                    id="checkout-area"
-                                    value={form.area}
-                                    onChange={handleChange}
-                                    placeholder="e.g. Andheri West, Koregaon Park"
-                                    className="input-field"
-                                    maxLength={100}
-                                />
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label className="block text-sm font-medium text-surface-700 mb-1.5">
+                                        City <span className="text-danger-500">*</span>
+                                    </label>
+                                    <select
+                                        name="city"
+                                        value={form.city}
+                                        onChange={(e) => setForm({ ...form, city: e.target.value, location: e.target.value })}
+                                        className="input-field"
+                                        required
+                                    >
+                                        <CityOptions />
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-surface-700 mb-1.5">
+                                        Area <span className="text-xs text-surface-400 font-normal">(Optional)</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="area"
+                                        value={form.area}
+                                        onChange={handleChange}
+                                        placeholder="e.g. Andheri West"
+                                        className="input-field"
+                                        maxLength={100}
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="bg-white p-6 rounded-2xl border border-surface-200 shadow-sm">
-                        <h2 className="text-xl font-bold text-surface-900 mb-6 flex items-center gap-2">
-                            <Calendar className="h-5 w-5 text-primary-600" />
-                            Preferred Schedule
-                        </h2>
+                    {/* Schedule */}
+                    <div className="card p-5">
+                        <div className="flex items-center gap-2 mb-5">
+                            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
+                                <Calendar className="h-4 w-4" />
+                            </div>
+                            <h2 className="text-base font-semibold text-surface-900">Preferred Schedule</h2>
+                        </div>
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div>
-                                <label className="block text-sm font-medium text-surface-700 mb-1">Date</label>
+                                <label className="block text-sm font-medium text-surface-700 mb-1.5">
+                                    Date <span className="text-danger-500">*</span>
+                                </label>
                                 <input
                                     type="date"
                                     name="date"
@@ -346,7 +299,9 @@ export default function CheckoutPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-surface-700 mb-1">Time</label>
+                                <label className="block text-sm font-medium text-surface-700 mb-1.5">
+                                    Time <span className="text-danger-500">*</span>
+                                </label>
                                 <select
                                     name="time"
                                     value={form.time}
@@ -354,7 +309,7 @@ export default function CheckoutPage() {
                                     required
                                     className="input-field"
                                 >
-                                    <option value="">Select Time</option>
+                                    <option value="">Select time</option>
                                     <option value="09:00 AM">09:00 AM</option>
                                     <option value="10:00 AM">10:00 AM</option>
                                     <option value="11:00 AM">11:00 AM</option>
@@ -367,145 +322,140 @@ export default function CheckoutPage() {
                         </div>
                     </div>
 
-                    <div className="bg-white p-6 rounded-2xl border border-surface-200 shadow-sm">
-                        <h2 className="text-xl font-bold text-surface-900 mb-6">Additional Notes</h2>
+                    {/* Notes */}
+                    <div className="card p-5">
+                        <label className="block text-sm font-medium text-surface-700 mb-1.5">
+                            Additional Notes <span className="text-xs text-surface-400 font-normal">(Optional)</span>
+                        </label>
                         <textarea
                             name="notes"
                             value={form.notes}
                             onChange={handleChange}
                             rows={2}
-                            placeholder="Any specific instructions? (Optional)"
-                            className="input-field"
+                            placeholder="Any specific instructions for the professional?"
+                            className="input-field resize-none"
                         />
                     </div>
                 </div>
 
-                {/* Summary Side */}
-                <div className="space-y-6">
-                    <div className="bg-surface-50 p-6 rounded-2xl border border-surface-200">
-                        <h2 className="text-lg font-bold text-surface-900 mb-4">Your Order</h2>
-                        <div className="space-y-4 mb-6">
+                {/* Order Summary Sidebar */}
+                <div className="lg:col-span-2 space-y-4">
+                    <div className="card sticky top-24 p-5">
+                        <h2 className="text-sm font-semibold text-surface-900 mb-4">Order Summary</h2>
+
+                        {/* Items */}
+                        <div className="space-y-2.5 mb-4 pb-4 border-b border-surface-100">
                             {cartItems.map(item => (
                                 <div key={item._id} className="flex justify-between text-sm">
-                                    <span className="text-surface-600">{item.name}</span>
-                                    <span className="font-medium">₹{item.price}</span>
+                                    <span className="text-surface-600 truncate mr-3">{item.name}</span>
+                                    <span className="font-medium text-surface-900 whitespace-nowrap">₹{item.price}</span>
                                 </div>
                             ))}
                         </div>
 
-                        <div className="border-t border-surface-200 pt-4 space-y-2 text-sm">
-                            <div className="flex justify-between text-surface-600">
+                        {/* Pricing */}
+                        <div className="space-y-2 text-sm">
+                            <div className="flex justify-between text-surface-500">
                                 <span>Subtotal</span>
                                 <span>₹{subtotal.toFixed(2)}</span>
                             </div>
                             {appliedDiscount > 0 && (
-                                <div className="flex justify-between text-green-600 font-medium">
-                                    <span>Discount (Coupon)</span>
+                                <div className="flex justify-between text-success-600 font-medium">
+                                    <span>Discount</span>
                                     <span>-₹{appliedDiscount.toFixed(2)}</span>
                                 </div>
                             )}
-                            <div className="flex justify-between text-surface-600">
-                                <span>Taxes</span>
+                            <div className="flex justify-between text-surface-500">
+                                <span>Taxes (18%)</span>
                                 <span>₹{finalTax.toFixed(2)}</span>
                             </div>
-                            <div className="flex justify-between text-surface-600">
-                                <span>Platform Fee</span>
+                            <div className="flex justify-between text-surface-500">
+                                <span>Platform fee</span>
                                 <span>₹{platformFee.toFixed(2)}</span>
+                            </div>
+                            <div className="border-t border-surface-200 pt-3 mt-3 flex justify-between font-semibold text-surface-900 text-base">
+                                <span>Total</span>
+                                <span>₹{finalTotal.toFixed(2)}</span>
                             </div>
                         </div>
 
-                        <div className="border-t border-surface-200 pt-4 mt-4 flex justify-between font-bold text-xl text-surface-900">
-                            <span>Total Amount</span>
-                            <span>₹{finalTotal.toFixed(2)}</span>
-                        </div>
-                    </div>
-
-                    {/* Coupon Section */}
-                    <div className="bg-white p-4 rounded-2xl border border-surface-200 shadow-sm">
-                        <h3 className="text-sm font-semibold text-surface-700 mb-3 flex items-center gap-2">
-                            <Tag className="h-4 w-4 text-primary-600" />
-                            Apply Coupon
-                        </h3>
-                        <div className="flex gap-2">
-                            <input 
-                                type="text" 
-                                value={couponCode} 
-                                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                                placeholder="Enter coupon code" 
-                                className="input-field py-2"
-                                disabled={appliedCoupon}
-                            />
-                            {!appliedCoupon ? (
-                                <button onClick={applyCoupon} className="btn-secondary py-2 px-4 shrink-0">Apply</button>
-                            ) : (
-                                <button onClick={removeCoupon} className="btn-danger py-2 px-4 shrink-0 bg-red-100 text-red-700 hover:bg-red-200 border-none">Remove</button>
+                        {/* Coupon */}
+                        <div className="mt-4 pt-4 border-t border-surface-100">
+                            <div className="flex items-center gap-1.5 mb-2">
+                                <Tag className="h-3.5 w-3.5 text-surface-400" />
+                                <span className="text-xs font-medium text-surface-600">Coupon Code</span>
+                            </div>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={couponCode}
+                                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                    placeholder="Enter code"
+                                    className="input-field py-2 text-xs"
+                                    disabled={appliedCoupon}
+                                />
+                                {!appliedCoupon ? (
+                                    <button onClick={applyCoupon} className="btn-secondary py-2 px-3 text-xs flex-shrink-0">Apply</button>
+                                ) : (
+                                    <button onClick={removeCoupon} className="text-xs font-medium text-danger-500 hover:text-danger-600 px-2 flex-shrink-0">Remove</button>
+                                )}
+                            </div>
+                            {couponMessage && <p className="text-xs text-success-600 mt-1.5">{couponMessage}</p>}
+                            {couponError && <p className="text-xs text-danger-500 mt-1.5">{couponError}</p>}
+                            {!appliedCoupon && !couponMessage && !couponError && (
+                                <p className="text-xs text-surface-400 mt-1.5">Try <span className="font-semibold text-primary-600">SERVEX50</span></p>
                             )}
                         </div>
-                        {couponMessage && <p className="text-sm font-medium text-green-600 mt-2">{couponMessage}</p>}
-                        {couponError && <p className="text-sm font-medium text-red-600 mt-2">{couponError}</p>}
-                        {!appliedCoupon && !couponMessage && !couponError && (
-                            <p className="text-xs text-primary-600 mt-2 font-medium">Suggestion: Use <span className="font-bold">SERVEX50</span> – Get ₹50 off on your first booking</p>
-                        )}
-                    </div>
 
-                    {/* Payment Methods Info */}
-                    <div className="bg-white p-4 rounded-2xl border border-surface-200 shadow-sm">
-                        <h3 className="text-sm font-semibold text-surface-700 mb-3 flex items-center gap-2">
-                            <CreditCard className="h-4 w-4 text-primary-600" />
-                            Accepted Payment Methods
-                        </h3>
-                        <div className="flex flex-wrap gap-2 text-xs text-surface-500">
-                            <span className="px-2 py-1 bg-surface-100 rounded-md">UPI ID</span>
-                            <span className="px-2 py-1 bg-surface-100 rounded-md">UPI QR</span>
-                            <span className="px-2 py-1 bg-surface-100 rounded-md">Credit/Debit Card</span>
-                            <span className="px-2 py-1 bg-surface-100 rounded-md">Net Banking</span>
-                            <span className="px-2 py-1 bg-surface-100 rounded-md">Wallets</span>
+                        {/* Payment methods */}
+                        <div className="mt-4 pt-4 border-t border-surface-100">
+                            <p className="text-xs font-medium text-surface-600 mb-2">Payment Methods</p>
+                            <div className="flex flex-wrap gap-1.5">
+                                {['UPI', 'Cards', 'Net Banking', 'Wallets'].map(m => (
+                                    <span key={m} className="px-2 py-0.5 text-[11px] bg-surface-50 text-surface-500 rounded border border-surface-200">{m}</span>
+                                ))}
+                            </div>
                         </div>
-                    </div>
 
-                    {/* Test mode instructions */}
-                    <div className="bg-blue-50 p-4 rounded-2xl border border-blue-200 shadow-sm">
-                        <h3 className="text-sm font-semibold text-blue-700 mb-2">🧪 Test Mode — How to Pay</h3>
-                        <ul className="text-xs text-blue-600 space-y-1 list-disc list-inside">
-                            <li>UPI ID: Use <strong>success@razorpay</strong></li>
-                            <li>Card: Use <strong>4111 1111 1111 1111</strong>, any future expiry, any CVV</li>
-                            <li>Netbanking: Select any bank and click "Success"</li>
-                        </ul>
-                    </div>
-
-                    {error && (
-                        <div className="flex items-center gap-2 p-4 rounded-xl bg-red-50 text-red-600 text-sm">
-                            <AlertCircle className="h-5 w-5 flex-shrink-0" />
-                            {error}
+                        {/* Test mode */}
+                        <div className="mt-4 p-3 rounded-lg bg-primary-50 border border-primary-100">
+                            <p className="text-xs font-medium text-primary-700 mb-1">Test Mode</p>
+                            <ul className="text-[11px] text-primary-600 space-y-0.5">
+                                <li>UPI: <strong>success@razorpay</strong></li>
+                                <li>Card: <strong>4111 1111 1111 1111</strong></li>
+                            </ul>
                         </div>
-                    )}
 
-                    <button
-                        onClick={handlePayNow}
-                        disabled={loading || !form.address || !form.date || !form.time || !form.city}
-                        className={`w-full py-4 text-lg shadow-lg rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
-                            loading || !form.address || !form.date || !form.time || !form.city
-                                ? 'bg-surface-300 text-surface-500 cursor-not-allowed'
-                                : 'btn-primary shadow-primary-500/20'
-                        }`}
-                    >
-                        {loading ? (
-                            <>
-                                <Loader2 className="h-5 w-5 animate-spin" />
-                                Processing Payment...
-                            </>
-                        ) : (
-                            <>
-                                <Shield className="h-5 w-5" />
-                                Pay ₹{finalTotal.toFixed(2)} Securely
-                            </>
+                        {/* Error */}
+                        {error && (
+                            <div className="mt-4 flex items-start gap-2 p-3 rounded-lg bg-danger-50 text-danger-600 text-xs">
+                                <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                                <span>{error}</span>
+                            </div>
                         )}
-                    </button>
 
-                    <p className="text-xs text-center text-surface-400 flex items-center justify-center gap-1">
-                        <Shield className="h-3 w-3" />
-                        Secured by Razorpay. Your payment information is encrypted.
-                    </p>
+                        {/* Pay Button */}
+                        <button
+                            onClick={handlePayNow}
+                            disabled={loading || !isFormValid}
+                            className="btn-primary w-full mt-5 py-3"
+                        >
+                            {loading ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Processing...
+                                </>
+                            ) : (
+                                <>
+                                    <Shield className="h-4 w-4" />
+                                    Pay ₹{finalTotal.toFixed(2)}
+                                </>
+                            )}
+                        </button>
+                        <p className="text-[11px] text-center text-surface-400 mt-2">
+                            Secured by Razorpay · Encrypted payment
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>

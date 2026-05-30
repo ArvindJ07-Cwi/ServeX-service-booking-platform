@@ -1,11 +1,15 @@
 const { pool } = require('../config/db');
-const { sendNewBookingNotifications } = require('../utils/emailService');
+const logger = require('../utils/logger');
+const {
+    sendNewBookingNotifications,
+    sendOtpEmail,
+    notifyUserServiceCompletedEmail,
+} = require('../utils/emailService');
 const {
     notifyAgentsAboutNewBooking,
     notifyAdminsAboutNewBooking,
     notifyUserAboutBookingStatus
 } = require('./notificationController');
-const { notifyUserServiceCompletedEmail } = require('../utils/emailService');
 
 // Helper to format booking object
 // Helper: generate a 6-digit numeric OTP
@@ -400,11 +404,20 @@ const startBooking = async (req, res) => {
             [otpCode, otpExpiresAt, req.params.id]
         );
 
-        // Simulate sending OTP (console.log for now)
-        console.log(`\n========================================`);
-        console.log(`🔐 OTP for Booking #${req.params.id}: ${otpCode}`);
-        console.log(`⏰ Expires at: ${otpExpiresAt.toLocaleString()}`);
-        console.log(`========================================\n`);
+        logger.info(`[OTP] Generated for Booking #${req.params.id}: ${otpCode} (expires ${otpExpiresAt.toISOString()})`);
+
+        // Send OTP email to user
+        try {
+            const [userRows] = await pool.query(
+                'SELECT u.name, u.email FROM users u JOIN bookings b ON b.user_id = u.id WHERE b.id = ?',
+                [req.params.id]
+            );
+            if (userRows.length) {
+                await sendOtpEmail(userRows[0].email, userRows[0].name, req.params.id, otpCode, otpExpiresAt);
+            }
+        } catch (emailErr) {
+            logger.error('[OTP] Failed to send OTP email (non-fatal):', emailErr.message);
+        }
 
         const [updated] = await pool.query('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
         return res.json({ ...updated[0], _id: updated[0].id });
@@ -482,13 +495,22 @@ const generateOtp = async (req, res) => {
             [otpCode, otpExpiresAt, req.params.id]
         );
 
-        // Simulate sending OTP
-        console.log(`\n========================================`);
-        console.log(`🔐 [RESEND] OTP for Booking #${req.params.id}: ${otpCode}`);
-        console.log(`⏰ Expires at: ${otpExpiresAt.toLocaleString()}`);
-        console.log(`========================================\n`);
+        logger.info(`[OTP] Resent for Booking #${req.params.id}: ${otpCode}`);
 
-        return res.json({ message: 'OTP generated successfully', otp_expires_at: otpExpiresAt });
+        // Send OTP email to user
+        try {
+            const [userRows] = await pool.query(
+                'SELECT u.name, u.email FROM users u JOIN bookings b ON b.user_id = u.id WHERE b.id = ?',
+                [req.params.id]
+            );
+            if (userRows.length) {
+                await sendOtpEmail(userRows[0].email, userRows[0].name, req.params.id, otpCode, otpExpiresAt);
+            }
+        } catch (emailErr) {
+            logger.error('[OTP] Failed to send OTP email (non-fatal):', emailErr.message);
+        }
+
+        return res.json({ message: 'OTP sent successfully', otp_expires_at: otpExpiresAt });
     } catch (error) {
         console.error('Generate OTP error:', error);
         return res.status(500).json({ message: 'Server error generating OTP' });

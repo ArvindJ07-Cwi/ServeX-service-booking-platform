@@ -82,37 +82,44 @@ const deleteNotification = asyncHandler(async (req, res) => {
 });
 
 // Helper function to notify matching agents about new booking
-const notifyAgentsAboutNewBooking = async (bookingId, serviceName, userName, date, time, serviceCategory = null, location = null) => {
+// FIX: was filtering by 'location' only — bookings now store city in 'city' column
+const notifyAgentsAboutNewBooking = async (bookingId, serviceName, userName, date, time, serviceCategory = null, city = null) => {
     try {
-        let query = 'SELECT id FROM users WHERE role = "agent"';
+        let query = 'SELECT id FROM users WHERE role = "agent" AND availability_status = 1';
         const params = [];
 
-        // Filter by matching service_category and location when available
+        // Filter by service category first
         if (serviceCategory) {
-            query += ' AND LOWER(service_category) = LOWER(?)';
+            query += ' AND LOWER(TRIM(service_category)) = LOWER(TRIM(?))';
             params.push(serviceCategory);
         }
-        if (location) {
-            query += ' AND LOWER(location) = LOWER(?)';
-            params.push(location);
+        // Match city column OR legacy location column
+        if (city) {
+            query += ' AND (LOWER(TRIM(city)) = LOWER(TRIM(?)) OR LOWER(TRIM(location)) = LOWER(TRIM(?)))';
+            params.push(city, city);
         }
 
         let [agents] = await pool.query(query, params);
 
-        // Fallback: if no matching agents found, notify all agents
-        if (agents.length === 0) {
-            [agents] = await pool.query('SELECT id FROM users WHERE role = "agent"');
+        // Fallback: if no city-matched agents, notify all agents in the same category
+        if (agents.length === 0 && serviceCategory) {
+            const fallbackQuery = 'SELECT id FROM users WHERE role = "agent" AND availability_status = 1 AND LOWER(TRIM(service_category)) = LOWER(TRIM(?))';
+            [agents] = await pool.query(fallbackQuery, [serviceCategory]);
         }
-        
+
+        // Last resort fallback: notify all active agents
+        if (agents.length === 0) {
+            [agents] = await pool.query('SELECT id FROM users WHERE role = "agent" AND availability_status = 1');
+        }
+
         const title = 'New Booking Available';
         const message = `New booking for ${serviceName} by ${userName} on ${date} at ${time}`;
-        
-        // Create notification for each agent
+
         for (const agent of agents) {
             await createNotification(agent.id, bookingId, 'new_booking', title, message);
         }
-        
-        console.log(`✅ Notified ${agents.length} agents about booking #${bookingId}`);
+
+        console.log(`✅ Notified ${agents.length} agents about booking #${bookingId} (category: ${serviceCategory}, city: ${city})`);
     } catch (error) {
         console.error('Error notifying agents:', error);
     }

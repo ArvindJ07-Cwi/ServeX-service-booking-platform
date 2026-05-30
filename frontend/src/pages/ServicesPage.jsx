@@ -58,7 +58,7 @@ export default function ServicesPage() {
     return (
         <div className="min-h-screen bg-surface-50 pt-20 animate-fade-in">
             <div className="section-container py-8">
-                {/* Header */}
+                {/* Page Header */}
                 <div className="mb-8">
                     <h1 className="page-header">
                         {categoryParam ? `${categoryParam} Services` : searchParam ? `Results for "${searchParam}"` : 'All Services'}
@@ -87,15 +87,15 @@ export default function ServicesPage() {
 
                 {/* Active filter chip */}
                 {activeFilter && (
-                    <div className="mb-6 flex items-center gap-2">
+                    <div className="mb-6 flex items-center gap-2 flex-wrap">
                         <span className="text-sm text-surface-500">Filtered by:</span>
-                        <span className="badge-primary flex items-center gap-1.5">
+                        <span className="badge-primary flex items-center gap-1.5 px-3 py-1">
                             {categoryParam ? `Category: ${categoryParam}` : `Search: ${searchParam}`}
-                            <button onClick={clearFilters}>
+                            <button onClick={clearFilters} className="ml-0.5 hover:text-primary-900 transition-colors">
                                 <X className="h-3.5 w-3.5" />
                             </button>
                         </span>
-                        <button onClick={clearFilters} className="text-xs text-primary-600 hover:text-primary-700 font-medium ml-2">
+                        <button onClick={clearFilters} className="text-xs text-primary-600 hover:text-primary-700 font-medium ml-1">
                             View all services
                         </button>
                     </div>
@@ -121,13 +121,15 @@ export default function ServicesPage() {
 
                 {/* Empty state */}
                 {!loading && services.length === 0 && (
-                    <div className="text-center py-16">
-                        <Package className="h-12 w-12 text-surface-300 mx-auto mb-3" />
-                        <h3 className="text-lg font-medium text-surface-600">
+                    <div className="text-center py-20">
+                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-surface-100">
+                            <Package className="h-8 w-8 text-surface-300" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-surface-900">
                             No services found
                         </h3>
-                        <p className="text-sm text-surface-400 mt-1 mb-4">
-                            {searchParam ? `No results for "${searchParam}"` : categoryParam ? `No services in "${categoryParam}"` : 'No services available.'}
+                        <p className="text-sm text-surface-500 mt-1 mb-6 max-w-sm mx-auto">
+                            {searchParam ? `No results for "${searchParam}". Try a different search term.` : categoryParam ? `No services in "${categoryParam}" yet.` : 'No services available at the moment.'}
                         </p>
                         <button onClick={clearFilters} className="btn-secondary">
                             <ArrowLeft className="h-4 w-4" /> View all services

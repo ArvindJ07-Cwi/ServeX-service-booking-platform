@@ -1,18 +1,19 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Wrench, Mail, Lock, User, Phone, Loader2, Eye, EyeOff, AlertCircle, MapPin, Tag } from 'lucide-react';
+import { Mail, Lock, User, Phone, Loader2, Eye, EyeOff, AlertCircle, MapPin, Tag, Briefcase, ShoppingBag } from 'lucide-react';
 import Logo from '../components/Logo';
+import { CityOptions } from '../constants/cities.jsx';
 
 // InputField is defined OUTSIDE the component to prevent re-creation on every render
 function InputField({ name, label, type = 'text', icon: Icon, placeholder, autoComplete, value, onChange, error, showPassword, onTogglePassword }) {
     return (
         <div>
-            <label htmlFor={name} className="block text-sm font-medium text-surface-700 mb-1.5">
+            <label htmlFor={name} className="block text-sm font-medium text-surface-900 mb-1.5">
                 {label}
             </label>
             <div className="relative">
-                <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-400" />
+                <Icon className="absolute left-3 top-1/2 -translate-y-1/2 h-[18px] w-[18px] text-surface-400" />
                 <input
                     id={name}
                     name={name}
@@ -21,19 +22,19 @@ function InputField({ name, label, type = 'text', icon: Icon, placeholder, autoC
                     value={value}
                     onChange={onChange}
                     placeholder={placeholder}
-                    className={`input-field pl-10 ${(name === 'password' || name === 'confirmPassword') ? 'pr-10' : ''} ${error ? 'border-danger-500 focus:border-danger-500 focus:ring-danger-500/20' : ''}`}
+                    className={`input-field pl-10 ${(name === 'password' || name === 'confirmPassword') ? 'pr-10' : ''} ${error ? 'border-red-400 focus:border-red-400 focus:ring-red-100' : ''}`}
                 />
                 {(name === 'password' || name === 'confirmPassword') && (
                     <button
                         type="button"
                         onClick={onTogglePassword}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-600"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-600 transition-colors"
                     >
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                 )}
             </div>
-            {error && <p className="mt-1 text-xs text-danger-500">{error}</p>}
+            {error && <p className="mt-1.5 text-xs text-red-600">{error}</p>}
         </div>
     );
 }
@@ -101,54 +102,28 @@ export default function Register() {
     };
 
     return (
-        <div className="flex min-h-screen">
-            {/* Left - Visual */}
-            <div className="hidden lg:flex flex-1 items-center justify-center bg-gradient-to-br from-surface-900 via-surface-800 to-primary-950 relative overflow-hidden">
-                <div className="absolute inset-0 opacity-[0.04]" style={{
-                    backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
-                    backgroundSize: '32px 32px',
-                }} />
-                <div className="absolute bottom-20 -left-20 h-60 w-60 rounded-full bg-primary-600/20 blur-[80px]" />
-
-                <div className="relative text-center max-w-md px-8">
-                    <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-white/10 backdrop-blur-sm border border-white/10">
-                        <Wrench className="h-10 w-10 text-white" />
+        <div className="flex min-h-screen items-center justify-center bg-surface-50 px-4 py-12">
+            <div className="w-full max-w-[480px]">
+                {/* Card */}
+                <div className="rounded-xl border border-surface-200 bg-white p-8 shadow-sm">
+                    {/* Logo */}
+                    <div className="flex justify-center mb-8">
+                        <Logo size="medium" />
                     </div>
-                    <h2 className="text-3xl font-bold text-white">Join the ServeX community</h2>
-                    <p className="mt-3 text-surface-400 leading-relaxed">
-                        Whether you need services or want to offer yours, create your account in seconds.
-                    </p>
-                    <div className="mt-8 flex justify-center gap-8 text-center">
-                        <div>
-                            <p className="text-2xl font-bold text-white">50K+</p>
-                            <p className="text-xs text-surface-500">Happy Users</p>
-                        </div>
-                        <div>
-                            <p className="text-2xl font-bold text-white">5K+</p>
-                            <p className="text-xs text-surface-500">Professionals</p>
-                        </div>
-                        <div>
-                            <p className="text-2xl font-bold text-white">4.8</p>
-                            <p className="text-xs text-surface-500">Avg Rating</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            {/* Right - Form */}
-            <div className="flex flex-1 flex-col justify-center px-6 py-12 sm:px-12 lg:px-20">
-                <div className="mx-auto w-full max-w-sm">
-                    <Logo size="medium" className="mb-10 lg:hidden" />
-
-                    <h1 className="text-2xl font-bold text-surface-900">Create your account</h1>
-                    <p className="mt-1.5 text-sm text-surface-500">
+                    {/* Heading */}
+                    <h1 className="text-center text-2xl font-bold text-surface-900">
+                        Create your account
+                    </h1>
+                    <p className="mt-1.5 text-center text-sm text-surface-600">
                         Get started in less than a minute
                     </p>
 
+                    {/* Error banner */}
                     {error && (
-                        <div className="mt-6 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3 animate-scale-in">
-                            <AlertCircle className="h-4 w-4 text-danger-500 mt-0.5 shrink-0" />
-                            <p className="text-sm text-danger-500">{error}</p>
+                        <div className="mt-6 flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 p-3">
+                            <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
+                            <p className="text-sm text-red-600">{error}</p>
                         </div>
                     )}
 
@@ -157,24 +132,32 @@ export default function Register() {
                         <InputField name="email" label="Email address" type="email" icon={Mail} placeholder="you@example.com" autoComplete="email" value={form.email} onChange={handleChange} error={errors.email} />
                         <InputField name="phone" label="Phone (optional)" type="tel" icon={Phone} placeholder="9876543210" autoComplete="tel" value={form.phone} onChange={handleChange} error={errors.phone} />
 
-                        {/* Role Selector */}
+                        {/* Role Selector Cards */}
                         <div>
-                            <label className="block text-sm font-medium text-surface-700 mb-1.5">I want to</label>
-                            <div className="grid grid-cols-2 gap-2">
+                            <label className="block text-sm font-medium text-surface-900 mb-2">I want to</label>
+                            <div className="grid grid-cols-2 gap-3">
                                 {[
-                                    { value: 'user', label: 'Book Services' },
-                                    { value: 'agent', label: 'Offer Services' },
-                                ].map(({ value, label }) => (
+                                    { value: 'user', label: 'Book Services', description: 'Find & hire professionals', Icon: ShoppingBag },
+                                    { value: 'agent', label: 'Offer Services', description: 'Get hired for your skills', Icon: Briefcase },
+                                ].map(({ value, label, description, Icon: RoleIcon }) => (
                                     <button
                                         key={value}
                                         type="button"
                                         onClick={() => setForm((prev) => ({ ...prev, role: value }))}
-                                        className={`rounded-xl border px-4 py-2.5 text-sm font-medium transition-all ${form.role === value
-                                            ? 'border-primary-600 bg-primary-50 text-primary-700'
-                                            : 'border-surface-200 text-surface-500 hover:border-surface-300'
+                                        className={`relative flex flex-col items-center gap-2 rounded-xl border-2 px-4 py-4 text-center transition-all duration-150 ${form.role === value
+                                            ? 'border-primary-600 bg-primary-50'
+                                            : 'border-surface-200 bg-white hover:border-surface-300 hover:bg-surface-50'
                                             }`}
                                     >
-                                        {label}
+                                        <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${form.role === value ? 'bg-primary-100 text-primary-600' : 'bg-surface-100 text-surface-500'}`}>
+                                            <RoleIcon className="h-5 w-5" />
+                                        </div>
+                                        <span className={`text-sm font-semibold ${form.role === value ? 'text-primary-700' : 'text-surface-900'}`}>
+                                            {label}
+                                        </span>
+                                        <span className="text-xs text-surface-500 leading-tight">
+                                            {description}
+                                        </span>
                                     </button>
                                 ))}
                             </div>
@@ -182,57 +165,48 @@ export default function Register() {
 
                         {/* Agent-specific fields */}
                         {form.role === 'agent' && (
-                            <>
+                            <div className="space-y-4 rounded-xl border border-surface-200 bg-surface-50 p-4">
+                                <p className="text-xs font-medium text-surface-500 uppercase tracking-wide">Professional details</p>
                                 <div>
-                                    <label className="block text-sm font-medium text-surface-700 mb-1.5">Service Area / City <span className="text-red-500">*</span></label>
+                                    <label className="block text-sm font-medium text-surface-900 mb-1.5">Service Area / City <span className="text-red-500">*</span></label>
                                     <div className="relative">
-                                        <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-400" />
+                                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-[18px] w-[18px] text-surface-400" />
                                         <select
                                             name="city"
                                             value={form.city}
                                             onChange={(e) => setForm(prev => ({ ...prev, city: e.target.value, location: e.target.value }))}
-                                            className="input-field pl-10"
+                                            className="input-field pl-10 bg-white"
                                         >
-                                            <option value="">Select your city / area</option>
-                                            <option value="Mumbai">Mumbai</option>
-                                            <option value="Thane">Thane</option>
-                                            <option value="Navi Mumbai">Navi Mumbai</option>
-                                            <option value="Pune">Pune</option>
-                                            <option value="Delhi">Delhi</option>
-                                            <option value="Bangalore">Bangalore</option>
-                                            <option value="Hyderabad">Hyderabad</option>
-                                            <option value="Chennai">Chennai</option>
-                                            <option value="Kolkata">Kolkata</option>
-                                            <option value="Ahmedabad">Ahmedabad</option>
+                                            <CityOptions />
                                         </select>
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-surface-700 mb-1.5">
-                                        Area / Locality <span className="text-surface-400 font-normal">(Optional — for more precise matching)</span>
+                                    <label className="block text-sm font-medium text-surface-900 mb-1.5">
+                                        Area / Locality <span className="text-surface-400 font-normal text-xs">(Optional)</span>
                                     </label>
                                     <div className="relative">
-                                        <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-400" />
+                                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-[18px] w-[18px] text-surface-400" />
                                         <input
                                             type="text"
                                             name="area"
                                             value={form.area}
                                             onChange={handleChange}
                                             placeholder="e.g. Andheri West, Koregaon Park"
-                                            className="input-field pl-10"
+                                            className="input-field pl-10 bg-white"
                                             maxLength={100}
                                         />
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-surface-700 mb-1.5">Service Category</label>
+                                    <label className="block text-sm font-medium text-surface-900 mb-1.5">Service Category</label>
                                     <div className="relative">
-                                        <Tag className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-400" />
+                                        <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-[18px] w-[18px] text-surface-400" />
                                         <select
                                             name="service_category"
                                             value={form.service_category}
                                             onChange={handleChange}
-                                            className="input-field pl-10"
+                                            className="input-field pl-10 bg-white"
                                         >
                                             <option value="">Select your expertise</option>
                                             <option value="Cleaning">Cleaning</option>
@@ -246,7 +220,7 @@ export default function Register() {
                                         </select>
                                     </div>
                                 </div>
-                            </>
+                            </div>
                         )}
 
                         <InputField name="password" label="Password" icon={Lock} placeholder="••••••••" autoComplete="new-password" value={form.password} onChange={handleChange} error={errors.password} showPassword={showPassword} onTogglePassword={() => setShowPassword(!showPassword)} />
@@ -255,13 +229,13 @@ export default function Register() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="btn-primary w-full py-3"
+                            className="btn-primary w-full py-2.5"
                             id="register-submit"
                         >
                             {loading ? (
                                 <>
                                     <Loader2 className="h-4 w-4 animate-spin" />
-                                    Creating account...
+                                    Creating account…
                                 </>
                             ) : (
                                 'Create account'
@@ -269,9 +243,9 @@ export default function Register() {
                         </button>
                     </form>
 
-                    <p className="mt-8 text-center text-sm text-surface-500">
+                    <p className="mt-6 text-center text-sm text-surface-600">
                         Already have an account?{' '}
-                        <Link to="/login" className="font-medium text-primary-600 hover:text-primary-700">
+                        <Link to="/login" className="font-medium text-primary-600 hover:text-primary-700 transition-colors">
                             Sign in
                         </Link>
                     </p>

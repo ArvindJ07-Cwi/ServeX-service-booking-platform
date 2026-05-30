@@ -6,25 +6,23 @@ import BookingCard, { BookingCardSkeleton } from '../components/BookingCard';
 import {
     CalendarDays,
     PlusCircle,
-    Filter,
     Package,
     Clock,
     CheckCircle2,
     XCircle,
     AlertCircle,
     Loader2,
-    Search,
     MapPin,
     ArrowRight,
 } from 'lucide-react';
 
 const statusFilters = [
-    { value: 'all', label: 'All', icon: Package },
-    { value: 'pending', label: 'Pending', icon: Clock },
-    { value: 'confirmed', label: 'Confirmed', icon: CalendarDays },
-    { value: 'in_progress', label: 'In Progress', icon: Loader2 },
-    { value: 'completed', label: 'Completed', icon: CheckCircle2 },
-    { value: 'cancelled', label: 'Cancelled', icon: XCircle },
+    { value: 'all', label: 'All' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'confirmed', label: 'Confirmed' },
+    { value: 'in_progress', label: 'In Progress' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'cancelled', label: 'Cancelled' },
 ];
 
 export default function UserDashboard() {
@@ -72,8 +70,6 @@ export default function UserDashboard() {
         isMounted.current = true;
         fetchBookings(true);
         fetchServices();
-
-        // Poll every 5 seconds for real-time updates
         const interval = setInterval(() => fetchBookings(false), 5000);
         return () => {
             isMounted.current = false;
@@ -126,15 +122,15 @@ export default function UserDashboard() {
     };
 
     return (
-        <div className="min-h-screen bg-surface-50 pt-20">
+        <div className="bg-surface-50 min-h-screen">
             <div className="section-container py-8">
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                     <div>
-                        <h1 className="page-header">
-                            Welcome back, <span className="text-primary-600">{user?.name?.split(' ')[0] || 'User'}</span>
+                        <h1 className="text-2xl font-semibold text-surface-900">
+                            Welcome back, {user?.name?.split(' ')[0] || 'User'}
                         </h1>
-                        <p className="page-subtitle">Manage your bookings and services</p>
+                        <p className="text-sm text-surface-500 mt-1">Manage your bookings and services</p>
                     </div>
                     <button
                         onClick={() => setShowBookForm(!showBookForm)}
@@ -146,29 +142,29 @@ export default function UserDashboard() {
                     </button>
                 </div>
 
-                {/* Success message */}
+                {/* Success banner */}
                 {bookingSuccess && (
-                    <div className="mb-6 flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 p-3 animate-scale-in">
+                    <div className="mb-6 flex items-center gap-2 rounded-lg bg-success-50 border border-success-500/20 px-4 py-3 animate-fade-in">
                         <CheckCircle2 className="h-4 w-4 text-success-600" />
-                        <p className="text-sm text-success-600 font-medium">{bookingSuccess}</p>
+                        <p className="text-sm text-success-700 font-medium">{bookingSuccess}</p>
                     </div>
                 )}
 
-                {/* Stats Row */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8 stagger-children">
+                {/* Stats */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
                     {[
-                        { label: 'Total Bookings', value: stats.total, icon: Package, color: 'text-surface-600 bg-surface-100' },
-                        { label: 'Pending', value: stats.pending, icon: Clock, color: 'text-amber-600 bg-amber-50' },
-                        { label: 'Active', value: stats.active, icon: Loader2, color: 'text-primary-600 bg-primary-50' },
-                        { label: 'Completed', value: stats.completed, icon: CheckCircle2, color: 'text-green-600 bg-green-50' },
-                    ].map(({ label, value, icon: Icon, color }) => (
-                        <div key={label} className="card">
+                        { label: 'Total', value: stats.total, icon: Package, iconBg: 'bg-surface-100 text-surface-600' },
+                        { label: 'Pending', value: stats.pending, icon: Clock, iconBg: 'bg-warning-50 text-warning-600' },
+                        { label: 'Active', value: stats.active, icon: CalendarDays, iconBg: 'bg-primary-50 text-primary-600' },
+                        { label: 'Completed', value: stats.completed, icon: CheckCircle2, iconBg: 'bg-success-50 text-success-600' },
+                    ].map(({ label, value, icon: Icon, iconBg }) => (
+                        <div key={label} className="card p-4">
                             <div className="flex items-center gap-3">
-                                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${color}`}>
-                                    <Icon className="h-5 w-5" />
+                                <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${iconBg}`}>
+                                    <Icon className="h-4 w-4" />
                                 </div>
                                 <div>
-                                    <p className="text-2xl font-bold text-surface-900">{value}</p>
+                                    <p className="text-xl font-semibold text-surface-900">{value}</p>
                                     <p className="text-xs text-surface-500">{label}</p>
                                 </div>
                             </div>
@@ -176,14 +172,14 @@ export default function UserDashboard() {
                     ))}
                 </div>
 
-                {/* Book Service Form */}
+                {/* Book Form */}
                 {showBookForm && (
-                    <div className="card mb-8 animate-slide-down">
-                        <h2 className="text-lg font-semibold text-surface-900 mb-4">Book a Service</h2>
+                    <div className="card p-5 mb-6 animate-slide-down">
+                        <h2 className="text-base font-semibold text-surface-900 mb-4">Book a Service</h2>
                         {bookingError && (
-                            <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3">
-                                <AlertCircle className="h-4 w-4 text-danger-500 shrink-0" />
-                                <p className="text-sm text-danger-500">{bookingError}</p>
+                            <div className="mb-4 flex items-center gap-2 rounded-lg bg-danger-50 border border-danger-500/20 px-3 py-2.5">
+                                <AlertCircle className="h-4 w-4 text-danger-500 flex-shrink-0" />
+                                <p className="text-sm text-danger-600">{bookingError}</p>
                             </div>
                         )}
                         <form onSubmit={handleBookService} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -226,17 +222,14 @@ export default function UserDashboard() {
                             </div>
                             <div className="sm:col-span-2">
                                 <label className="block text-sm font-medium text-surface-700 mb-1.5">Address *</label>
-                                <div className="relative">
-                                    <MapPin className="absolute left-3.5 top-3 h-4 w-4 text-surface-400" />
-                                    <input
-                                        type="text"
-                                        value={bookingForm.address}
-                                        onChange={(e) => setBookingForm((p) => ({ ...p, address: e.target.value }))}
-                                        placeholder="Enter your full address"
-                                        className="input-field pl-10"
-                                        id="booking-address-input"
-                                    />
-                                </div>
+                                <input
+                                    type="text"
+                                    value={bookingForm.address}
+                                    onChange={(e) => setBookingForm((p) => ({ ...p, address: e.target.value }))}
+                                    placeholder="Enter your full address"
+                                    className="input-field"
+                                    id="booking-address-input"
+                                />
                             </div>
                             <div className="sm:col-span-2">
                                 <label className="block text-sm font-medium text-surface-700 mb-1.5">Notes (optional)</label>
@@ -244,13 +237,13 @@ export default function UserDashboard() {
                                     value={bookingForm.notes}
                                     onChange={(e) => setBookingForm((p) => ({ ...p, notes: e.target.value }))}
                                     placeholder="Any special instructions..."
-                                    rows={3}
+                                    rows={2}
                                     className="input-field resize-none"
                                 />
                             </div>
                             <div className="sm:col-span-2 flex gap-3">
                                 <button type="submit" disabled={bookingLoading} className="btn-primary" id="confirm-booking-btn">
-                                    {bookingLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Booking...</> : <>Confirm Booking <ArrowRight className="h-4 w-4" /></>}
+                                    {bookingLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Booking...</> : <>Confirm Booking</>}
                                 </button>
                                 <button type="button" onClick={() => setShowBookForm(false)} className="btn-ghost">
                                     Cancel
@@ -261,24 +254,24 @@ export default function UserDashboard() {
                 )}
 
                 {/* Filters */}
-                <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide">
-                    {statusFilters.map(({ value, label, icon: Icon }) => (
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-6">
+                    {statusFilters.map(({ value, label }) => (
                         <button
                             key={value}
                             onClick={() => setFilter(value)}
-                            className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap transition-all ${filter === value
-                                ? 'bg-primary-600 text-white shadow-sm'
-                                : 'bg-white text-surface-600 border border-surface-200 hover:border-surface-300'
-                                }`}
+                            className={`rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors ${
+                                filter === value
+                                    ? 'bg-surface-900 text-white'
+                                    : 'text-surface-600 hover:bg-surface-100'
+                            }`}
                         >
-                            <Icon className="h-3.5 w-3.5" />
                             {label}
                         </button>
                     ))}
                 </div>
 
                 {/* Bookings List */}
-                <div className="space-y-4">
+                <div className="space-y-3">
                     {loading ? (
                         Array.from({ length: 3 }).map((_, i) => <BookingCardSkeleton key={i} />)
                     ) : filteredBookings.length > 0 ? (
@@ -287,14 +280,14 @@ export default function UserDashboard() {
                         ))
                     ) : (
                         <div className="card text-center py-16">
-                            <Package className="h-12 w-12 text-surface-300 mx-auto mb-3" />
-                            <h3 className="text-lg font-medium text-surface-600">No bookings found</h3>
+                            <Package className="h-10 w-10 text-surface-300 mx-auto mb-3" />
+                            <h3 className="text-base font-medium text-surface-700">No bookings found</h3>
                             <p className="text-sm text-surface-400 mt-1">
                                 {filter === 'all' ? "You haven't booked anything yet." : `No ${filter} bookings.`}
                             </p>
                             <button
                                 onClick={() => setShowBookForm(true)}
-                                className="btn-primary mt-4"
+                                className="btn-primary mt-5"
                             >
                                 <PlusCircle className="h-4 w-4" />
                                 Book your first service

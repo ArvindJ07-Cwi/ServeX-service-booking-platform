@@ -1,23 +1,11 @@
 import { Link } from 'react-router-dom';
-import servxLogo from '../assets/servx-logo.jpg';
 
-// Size presets: width of the logo image itself
 const sizeMap = {
-    small: { img: 32, text: 'text-xl' },
-    medium: { img: 40, text: 'text-2xl' },
-    large: { img: 56, text: 'text-3xl' },
+    small: { img: 'h-7 w-7', text: 'text-lg' },
+    medium: { img: 'h-8 w-8', text: 'text-xl' },
+    large: { img: 'h-10 w-10', text: 'text-2xl' },
 };
 
-/**
- * Reusable Logo component for ServeX.
- *
- * Props:
- *  - size: 'small' | 'medium' | 'large'  (default: 'small')
- *  - showText: boolean — show "ServeX" wordmark next to logo (default: true)
- *  - className: extra class override on the wrapper
- *  - linkTo: path to navigate on click (default: '/')
- *  - hideTextOnMobile: hides the wordmark on small screens (default: true for small size)
- */
 export default function Logo({
     size = 'small',
     showText = true,
@@ -34,18 +22,13 @@ export default function Logo({
             aria-label="ServeX Home"
         >
             <img
-                src={servxLogo}
-                alt="ServeX Logo"
-                width={img}
-                height={img}
-                className="object-contain transition-transform group-hover:scale-105"
-                style={{ width: img, height: img }}
-                loading="eager"
-                decoding="async"
+                src="/images/ServexLOGO.png"
+                alt="ServeX"
+                className={`${img} object-contain`}
             />
             {showText && (
                 <span
-                    className={`font-bold tracking-tight text-surface-900 ${text} ${
+                    className={`font-semibold tracking-tight text-surface-900 ${text} ${
                         hideTextOnMobile ? 'hidden sm:inline' : ''
                     }`}
                 >

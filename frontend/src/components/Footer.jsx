@@ -1,12 +1,13 @@
 import { Link } from 'react-router-dom';
-import { Wrench, Mail, Phone, MapPin, ArrowUpRight } from 'lucide-react';
+import { Mail, Phone, MapPin } from 'lucide-react';
+import Logo from './Logo';
 
 const footerLinks = {
     Product: [
-        { label: 'Services', to: '/services' },
+        { label: 'All Services', to: '/services' },
         { label: 'How it Works', to: '/about' },
         { label: 'Pricing', to: '/services' },
-        { label: 'Become an Agent', to: '/register' },
+        { label: 'Become a Provider', to: '/register' },
     ],
     Company: [
         { label: 'About Us', to: '/about' },
@@ -24,34 +25,26 @@ const footerLinks = {
 
 export default function Footer() {
     return (
-        <footer className="border-t border-surface-200 bg-surface-950">
-            <div className="section-container py-16">
-                <div className="grid grid-cols-1 gap-12 md:grid-cols-2 lg:grid-cols-5">
+        <footer className="bg-surface-900 border-t border-surface-800">
+            <div className="section-container py-12 lg:py-16">
+                <div className="grid grid-cols-2 gap-8 md:grid-cols-4 lg:grid-cols-5">
                     {/* Brand */}
-                    <div className="lg:col-span-2">
-                        <Link to="/" className="inline-flex items-center gap-2 group">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-600">
-                                <Wrench className="h-5 w-5 text-white" />
-                            </div>
-                            <span className="text-xl font-bold text-white tracking-tight">
-                                Serve<span className="text-primary-400">X</span>
-                            </span>
-                        </Link>
+                    <div className="col-span-2 md:col-span-4 lg:col-span-2">
+                        <Logo size="medium" className="[&_span]:text-white [&_div]:bg-white/10 [&_div_span]:text-white" linkTo="/" />
                         <p className="mt-4 max-w-sm text-sm leading-relaxed text-surface-400">
-                            Your trusted marketplace for local services. Book verified professionals
-                            for home cleaning, repairs, beauty, and more — in just a few taps.
+                            Your trusted platform for professional home services. Book verified experts for cleaning, repairs, beauty, and more.
                         </p>
-                        <div className="mt-6 space-y-2.5">
-                            <a href="mailto:support@servex.com" className="flex items-center gap-2 text-sm text-surface-400 hover:text-white transition-colors">
-                                <Mail className="h-4 w-4" />
+                        <div className="mt-6 space-y-2">
+                            <a href="mailto:support@servex.com" className="flex items-center gap-2.5 text-sm text-surface-400 hover:text-surface-200 transition-colors">
+                                <Mail className="h-4 w-4 flex-shrink-0" />
                                 support@servex.com
                             </a>
-                            <a href="tel:+1234567890" className="flex items-center gap-2 text-sm text-surface-400 hover:text-white transition-colors">
-                                <Phone className="h-4 w-4" />
+                            <a href="tel:+1234567890" className="flex items-center gap-2.5 text-sm text-surface-400 hover:text-surface-200 transition-colors">
+                                <Phone className="h-4 w-4 flex-shrink-0" />
                                 +1 (234) 567-890
                             </a>
-                            <p className="flex items-center gap-2 text-sm text-surface-400">
-                                <MapPin className="h-4 w-4" />
+                            <p className="flex items-center gap-2.5 text-sm text-surface-400">
+                                <MapPin className="h-4 w-4 flex-shrink-0" />
                                 San Francisco, CA
                             </p>
                         </div>
@@ -60,16 +53,15 @@ export default function Footer() {
                     {/* Link Groups */}
                     {Object.entries(footerLinks).map(([title, links]) => (
                         <div key={title}>
-                            <h4 className="text-sm font-semibold text-white">{title}</h4>
+                            <h4 className="text-sm font-semibold text-surface-200">{title}</h4>
                             <ul className="mt-4 space-y-2.5">
                                 {links.map((link) => (
                                     <li key={link.label}>
                                         <Link
                                             to={link.to}
-                                            className="group flex items-center gap-1 text-sm text-surface-400 hover:text-white transition-colors"
+                                            className="text-sm text-surface-400 hover:text-surface-200 transition-colors"
                                         >
                                             {link.label}
-                                            <ArrowUpRight className="h-3 w-3 opacity-0 -translate-y-0.5 translate-x-0 transition-all group-hover:opacity-100 group-hover:translate-y-0" />
                                         </Link>
                                     </li>
                                 ))}
@@ -79,14 +71,14 @@ export default function Footer() {
                 </div>
 
                 {/* Bottom */}
-                <div className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-surface-800 pt-8 sm:flex-row">
+                <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-surface-800 pt-8 sm:flex-row">
                     <p className="text-sm text-surface-500">
                         © {new Date().getFullYear()} ServeX. All rights reserved.
                     </p>
                     <div className="flex items-center gap-6">
-                        <a href="#" className="text-sm text-surface-500 hover:text-white transition-colors">Privacy</a>
-                        <a href="#" className="text-sm text-surface-500 hover:text-white transition-colors">Terms</a>
-                        <a href="#" className="text-sm text-surface-500 hover:text-white transition-colors">Cookies</a>
+                        <a href="#" className="text-sm text-surface-500 hover:text-surface-300 transition-colors">Privacy</a>
+                        <a href="#" className="text-sm text-surface-500 hover:text-surface-300 transition-colors">Terms</a>
+                        <a href="#" className="text-sm text-surface-500 hover:text-surface-300 transition-colors">Cookies</a>
                     </div>
                 </div>
             </div>

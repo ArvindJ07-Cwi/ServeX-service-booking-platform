@@ -6,71 +6,144 @@ const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 const http = require('http');
 const socketIo = require('socket.io');
 const initSocket = require('./socket/index');
+const logger = require('./utils/logger');
+const { verifySmtp } = require('./utils/emailService');
 
 dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CORS — restrict to FRONTEND_URL in production
+// ─────────────────────────────────────────────────────────────────────────────
+const allowedOrigins = [
+    process.env.FRONTEND_URL || 'http://localhost:5173',
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:3000',
+].filter(Boolean);
+
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow requests with no origin (Postman, curl, server-to-server)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        logger.warn(`[CORS] Blocked origin: ${origin}`);
+        callback(new Error(`CORS: origin ${origin} not allowed`));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Socket.io CORS — same origin policy
+// ─────────────────────────────────────────────────────────────────────────────
 const io = socketIo(server, {
     cors: {
-        origin: '*',
-        methods: ['GET', 'POST']
+        origin: allowedOrigins,
+        methods: ['GET', 'POST'],
+        credentials: true,
     }
 });
 
-app.use(cors());
+// ─────────────────────────────────────────────────────────────────────────────
+// Rate limiting on auth routes — prevents brute-force attacks
+// ─────────────────────────────────────────────────────────────────────────────
+let rateLimit;
+try {
+    rateLimit = require('express-rate-limit');
+} catch {
+    logger.warn('[Server] express-rate-limit not installed — skipping rate limiting. Run: npm install express-rate-limit');
+}
+
+if (rateLimit) {
+    const authLimiter = rateLimit({
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        max: 20,
+        message: { message: 'Too many requests from this IP, please try again after 15 minutes.' },
+        standardHeaders: true,
+        legacyHeaders: false,
+    });
+    app.use('/api/auth/login', authLimiter);
+    app.use('/api/auth/register', authLimiter);
+    app.use('/api/auth/forgot-password', authLimiter);
+    logger.info('[Server] Rate limiting active on auth routes.');
+}
+
 app.use(express.json());
 
-// Initialize Database Tables
+// ─────────────────────────────────────────────────────────────────────────────
+// Request logger middleware
+// ─────────────────────────────────────────────────────────────────────────────
+app.use((req, _res, next) => {
+    logger.debug(`[${req.method}] ${req.originalUrl} — ip: ${req.ip}`);
+    next();
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Database init
+// ─────────────────────────────────────────────────────────────────────────────
 initializeDatabase();
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-    res.json({ 
-        status: 'ok', 
+// ─────────────────────────────────────────────────────────────────────────────
+// Health Checks
+// ─────────────────────────────────────────────────────────────────────────────
+app.get('/api/health', (_req, res) => {
+    res.json({
+        status: 'ok',
         message: 'ServeX API is running',
-        timestamp: new Date().toISOString()
+        environment: process.env.NODE_ENV || 'development',
+        timestamp: new Date().toISOString(),
     });
 });
 
-// Routes
-const authRoutes = require('./routes/auth.js');
-const serviceRoutes = require('./routes/services.js');
-const bookingRoutes = require('./routes/bookings.js');
-const userRoutes = require('./routes/users.js');
-const notificationRoutes = require('./routes/notifications.js');
-const paymentRoutes = require('./routes/payment.js');
+app.get('/api/health/email', async (_req, res) => {
+    const result = await verifySmtp();
+    const status = result.ok ? 200 : 503;
+    res.status(status).json({
+        status: result.ok ? 'ok' : 'error',
+        smtp: result.ok ? 'connected' : 'disconnected',
+        reason: result.reason || null,
+        user: (process.env.SMTP_USER || '').trim() || 'not configured',
+        host: (process.env.SMTP_HOST || '').trim() || 'not configured',
+        timestamp: new Date().toISOString(),
+    });
+});
 
-const reviewRoutes = require('./routes/reviews.js');
-const couponRoutes = require('./routes/coupons.js');
-const adminRoutes = require('./routes/admin.js');
-const chatRoutes = require('./routes/chat.js');
-const uploadRoutes = require('./routes/upload.js');
+// ─────────────────────────────────────────────────────────────────────────────
+// API Routes
+// ─────────────────────────────────────────────────────────────────────────────
+app.use('/api/auth',          require('./routes/auth.js'));
+app.use('/api/services',      require('./routes/services.js'));
+app.use('/api/bookings',      require('./routes/bookings.js'));
+app.use('/api/users',         require('./routes/users.js'));
+app.use('/api/notifications', require('./routes/notifications.js'));
+app.use('/api/payment',       require('./routes/payment.js'));
+app.use('/api/reviews',       require('./routes/reviews.js'));
+app.use('/api/coupons',       require('./routes/coupons.js'));
+app.use('/api/admin',         require('./routes/admin.js'));
+app.use('/api/chat',          require('./routes/chat.js'));
+app.use('/api/upload',        require('./routes/upload.js'));
 
-app.use('/api/auth', authRoutes);
-app.use('/api/services', serviceRoutes);
-app.use('/api/bookings', bookingRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/payment', paymentRoutes);
-app.use('/api/reviews', reviewRoutes);
-app.use('/api/coupons', couponRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/chat', chatRoutes);
-app.use('/api/upload', uploadRoutes);
-
-// Error Handling
+// ─────────────────────────────────────────────────────────────────────────────
+// Error handling
+// ─────────────────────────────────────────────────────────────────────────────
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
-
-// Initialize socket routes
+// ─────────────────────────────────────────────────────────────────────────────
+// Socket + Server start
+// ─────────────────────────────────────────────────────────────────────────────
 initSocket(io);
 
+const PORT = process.env.PORT || 5000;
+
 server.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📍 API: http://localhost:${PORT}/api`);
-    console.log(`💚 Health: http://localhost:${PORT}/api/health`);
+    logger.info(`🚀 Server running on port ${PORT}`);
+    logger.info(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    logger.info(`💚 Health: http://localhost:${PORT}/api/health`);
+    logger.info(`📧 Email health: http://localhost:${PORT}/api/health/email`);
+    logger.info(`🔒 CORS origins: ${allowedOrigins.join(', ')}`);
 });

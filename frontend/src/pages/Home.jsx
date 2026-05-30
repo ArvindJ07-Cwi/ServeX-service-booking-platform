@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Quote, Star, ChevronLeft, ChevronRight, Sparkles, Shield, Clock, Headphones } from 'lucide-react';
+import { ArrowRight, Quote, Star, Sparkles, Shield, Clock, Headphones } from 'lucide-react';
 import HeroSection from '../components/HeroSection';
 import CategoryGrid from '../components/CategoryGrid';
 import ServiceCard, { ServiceCardSkeleton } from '../components/ServiceCard';
@@ -74,6 +74,24 @@ const whyUs = [
     },
 ];
 
+const howItWorks = [
+    {
+        step: '01',
+        title: 'Choose a Service',
+        description: 'Browse our wide range of verified home services and pick what you need.',
+    },
+    {
+        step: '02',
+        title: 'Book a Slot',
+        description: 'Select your preferred date, time, and provide your address for the visit.',
+    },
+    {
+        step: '03',
+        title: 'Get It Done',
+        description: 'A verified professional arrives on time and delivers quality service.',
+    },
+];
+
 export default function Home() {
     const navigate = useNavigate();
     const { user, isAuthenticated } = useAuth();
@@ -124,7 +142,7 @@ export default function Home() {
             {/* Hero */}
             <HeroSection />
 
-            {/* Categories */}
+            {/* Browse by Category */}
             <section className="py-16 sm:py-20 bg-white">
                 <div className="section-container">
                     <div className="text-center mb-10">
@@ -153,7 +171,7 @@ export default function Home() {
                                         <p className="mt-2 text-white/80 text-sm sm:text-base">{banner.subtitle}</p>
                                         <Link
                                             to="/services"
-                                            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-white/20 backdrop-blur-sm border border-white/20 px-6 py-2.5 text-sm font-medium text-white hover:bg-white/30 transition-all"
+                                            className="mt-6 inline-flex items-center gap-2 rounded-lg bg-white px-6 py-2.5 text-sm font-semibold text-primary-700 hover:bg-surface-50 transition-colors"
                                         >
                                             {banner.cta} <ArrowRight className="h-4 w-4" />
                                         </Link>
@@ -215,8 +233,33 @@ export default function Home() {
                 </div>
             </section>
 
-            {/* Why Choose Us */}
+            {/* How It Works */}
             <section className="py-16 sm:py-20 bg-surface-50">
+                <div className="section-container">
+                    <div className="text-center mb-12">
+                        <h2 className="page-header">How It Works</h2>
+                        <p className="page-subtitle mt-2">Book a service in three simple steps</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 stagger-children">
+                        {howItWorks.map((item, index) => (
+                            <div key={item.step} className="relative text-center">
+                                {/* Connector line between steps */}
+                                {index < howItWorks.length - 1 && (
+                                    <div className="hidden md:block absolute top-8 left-[calc(50%+40px)] right-[calc(-50%+40px)] h-px bg-surface-200" />
+                                )}
+                                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-600 text-white text-xl font-bold">
+                                    {item.step}
+                                </div>
+                                <h3 className="text-base font-semibold text-surface-900">{item.title}</h3>
+                                <p className="mt-2 text-sm text-surface-500 leading-relaxed max-w-xs mx-auto">{item.description}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* Why Choose ServeX */}
+            <section className="py-16 sm:py-20 bg-white">
                 <div className="section-container">
                     <div className="text-center mb-12">
                         <h2 className="page-header">Why Choose ServeX</h2>
@@ -224,11 +267,11 @@ export default function Home() {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 stagger-children">
                         {whyUs.map(({ icon: Icon, title, description }) => (
-                            <div key={title} className="card-hover text-center group">
-                                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-50 text-primary-600 transition-transform duration-200 group-hover:scale-110">
-                                    <Icon className="h-7 w-7" />
+                            <div key={title} className="card-hover p-6 text-center group">
+                                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary-50 text-primary-600 transition-transform duration-200 group-hover:scale-105">
+                                    <Icon className="h-6 w-6" />
                                 </div>
-                                <h3 className="text-base font-semibold text-surface-900">{title}</h3>
+                                <h3 className="text-sm font-semibold text-surface-900">{title}</h3>
                                 <p className="mt-2 text-sm text-surface-500 leading-relaxed">{description}</p>
                             </div>
                         ))}
@@ -237,7 +280,7 @@ export default function Home() {
             </section>
 
             {/* Testimonials */}
-            <section className="py-16 sm:py-20 bg-white">
+            <section className="py-16 sm:py-20 bg-surface-50">
                 <div className="section-container">
                     <div className="text-center mb-12">
                         <h2 className="page-header">What Our Customers Say</h2>
@@ -245,9 +288,9 @@ export default function Home() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 stagger-children">
                         {testimonials.map((t) => (
-                            <div key={t.id} className="card-hover relative">
-                                <Quote className="absolute top-4 right-4 h-8 w-8 text-primary-100" />
-                                <div className="flex items-center gap-1 mb-3">
+                            <div key={t.id} className="card p-6 relative">
+                                <Quote className="absolute top-5 right-5 h-7 w-7 text-primary-100" />
+                                <div className="flex items-center gap-1 mb-4">
                                     {Array.from({ length: 5 }).map((_, i) => (
                                         <Star
                                             key={i}
@@ -259,8 +302,8 @@ export default function Home() {
                                     ))}
                                 </div>
                                 <p className="text-sm text-surface-600 leading-relaxed">{t.content}</p>
-                                <div className="mt-4 flex items-center gap-3 border-t border-surface-100 pt-4">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100 text-primary-700 text-sm font-semibold">
+                                <div className="mt-5 flex items-center gap-3 border-t border-surface-100 pt-5">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-50 text-primary-700 text-sm font-semibold ring-1 ring-primary-100">
                                         {t.avatar}
                                     </div>
                                     <div>
@@ -275,22 +318,22 @@ export default function Home() {
             </section>
 
             {/* CTA */}
-            <section className="py-16 sm:py-20 bg-gradient-to-br from-primary-600 to-primary-800">
+            <section className="py-16 sm:py-20 bg-surface-900">
                 <div className="section-container text-center">
-                    <h2 className="text-3xl sm:text-4xl font-bold text-white">Ready to get started?</h2>
-                    <p className="mt-3 text-primary-200 max-w-md mx-auto">
+                    <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">Ready to get started?</h2>
+                    <p className="mt-3 text-surface-400 max-w-md mx-auto">
                         Join thousands of happy customers. Book your first service today.
                     </p>
                     <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
                         <Link
                             to="/register"
-                            className="inline-flex items-center gap-2 rounded-xl bg-white px-8 py-3 text-sm font-semibold text-primary-700 shadow-lg hover:shadow-xl hover:bg-surface-50 transition-all active:scale-[0.98]"
+                            className="btn-primary py-3 px-8 text-base"
                         >
                             Create Free Account <ArrowRight className="h-4 w-4" />
                         </Link>
                         <Link
                             to="/services"
-                            className="inline-flex items-center gap-2 rounded-xl border border-white/30 px-8 py-3 text-sm font-medium text-white hover:bg-white/10 transition-all"
+                            className="btn-ghost text-surface-300 hover:text-white hover:bg-white/10 py-3 px-8"
                         >
                             Browse Services
                         </Link>
