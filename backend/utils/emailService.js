@@ -23,14 +23,29 @@ const getTransporter = () => {
     if (_transporter) return _transporter;
 
     if (SMTP_USER && SMTP_PASS) {
-        _transporter = nodemailer.createTransport({
-            host: SMTP_HOST || 'smtp.gmail.com',
-            port: SMTP_PORT,
-            secure: SMTP_PORT === 465,
-            auth: { user: SMTP_USER, pass: SMTP_PASS },
-            tls: { rejectUnauthorized: false }, // needed for some self-signed certs on Render
-        });
-        logger.info(`[Email] Transporter configured: ${SMTP_HOST}:${SMTP_PORT} as ${SMTP_USER}`);
+        // Gmail shorthand: use 'gmail' service which auto-configures host/port/TLS
+        const isGmail = SMTP_HOST === 'smtp.gmail.com' || SMTP_USER.endsWith('@gmail.com');
+
+        const transportConfig = isGmail
+            ? {
+                service: 'gmail',
+                auth: { user: SMTP_USER, pass: SMTP_PASS },
+            }
+            : {
+                host: SMTP_HOST || 'smtp.gmail.com',
+                port: SMTP_PORT,
+                secure: SMTP_PORT === 465,
+                auth: { user: SMTP_USER, pass: SMTP_PASS },
+                tls: { rejectUnauthorized: false },
+            };
+
+        // Add timeouts to prevent hanging on blocked ports
+        transportConfig.connectionTimeout = 10000; // 10 seconds
+        transportConfig.greetingTimeout = 10000;
+        transportConfig.socketTimeout = 15000;
+
+        _transporter = nodemailer.createTransport(transportConfig);
+        logger.info(`[Email] Transporter configured: ${isGmail ? 'Gmail service' : `${SMTP_HOST}:${SMTP_PORT}`} as ${SMTP_USER}`);
     } else {
         // Dev/fallback: mock transporter that logs to console
         logger.warn('[Email] SMTP credentials missing — emails will be logged to console only.');
@@ -46,7 +61,7 @@ const getTransporter = () => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Verify SMTP connection (used by health-check endpoint)
+// Verify SMTP connection (used by health-check endpoint) — WITH TIMEOUT
 // ─────────────────────────────────────────────────────────────────────────────
 const verifySmtp = () => {
     return new Promise((resolve) => {
@@ -55,7 +70,14 @@ const verifySmtp = () => {
         }
         const t = getTransporter();
         if (!t.verify) return resolve({ ok: false, reason: 'Mock transporter active' });
+
+        // Timeout after 10 seconds to prevent health endpoint from hanging
+        const timeout = setTimeout(() => {
+            resolve({ ok: false, reason: 'SMTP verify timed out after 10s — port may be blocked' });
+        }, 10000);
+
         t.verify((err) => {
+            clearTimeout(timeout);
             if (err) {
                 logger.error('[Email] SMTP verify failed:', err.message);
                 resolve({ ok: false, reason: err.message });
@@ -64,6 +86,31 @@ const verifySmtp = () => {
             }
         });
     });
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Send test email — used by /api/health/email/test endpoint
+// ─────────────────────────────────────────────────────────────────────────────
+const sendTestEmail = async (toEmail) => {
+    const target = toEmail || SMTP_USER;
+    if (!target) throw new Error('No recipient email provided');
+
+    const info = await sendWithRetry({
+        to: target,
+        subject: 'ServeX Email Test ✅',
+        text: `This is a test email from ServeX. If you can read this, email delivery is working!\n\nTimestamp: ${new Date().toISOString()}`,
+        html: `
+            <div style="font-family:Inter,Arial,sans-serif;max-width:560px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
+                <div style="background:#2563eb;padding:24px 32px"><h1 style="color:#fff;font-size:22px;margin:0">ServeX</h1></div>
+                <div style="padding:32px">
+                    <h2 style="font-size:18px;color:#111827;margin:0 0 8px">Email Test Successful ✅</h2>
+                    <p style="color:#6b7280;font-size:14px;margin:0 0 24px">If you can read this, ServeX email delivery is working correctly.</p>
+                    <p style="color:#9ca3af;font-size:12px;margin:0">Sent at: ${new Date().toISOString()}</p>
+                </div>
+            </div>
+        `,
+    });
+    return info;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -82,9 +129,22 @@ const sendWithRetry = async (mailOptions, attempts = 3) => {
         } catch (err) {
             lastError = err;
             logger.error(`[Email] ❌ Attempt ${i}/${attempts} failed for ${opts.to}: ${err.message}`);
+
+            // If auth fails, don't retry — credentials are wrong
+            if (err.code === 'EAUTH' || err.responseCode === 535) {
+                logger.error('[Email] 🚨 Authentication failed — check SMTP_USER and SMTP_PASS. For Gmail, use an App Password (not your regular password).');
+                break;
+            }
+
             if (i < attempts) {
                 const delay = Math.pow(2, i) * 500; // 1s, 2s, 4s
                 await new Promise(r => setTimeout(r, delay));
+
+                // Reset transporter on connection errors to force reconnect
+                if (err.code === 'ESOCKET' || err.code === 'ECONNECTION' || err.code === 'ETIMEDOUT') {
+                    logger.info('[Email] Resetting transporter for retry...');
+                    _transporter = null;
+                }
             }
         }
     }
@@ -94,7 +154,7 @@ const sendWithRetry = async (mailOptions, attempts = 3) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// OTP EMAIL — Sent to user when service starts (was only console.log before)
+// OTP EMAIL — Sent to user when service starts
 // ─────────────────────────────────────────────────────────────────────────────
 const sendOtpEmail = async (userEmail, userName, bookingId, otpCode, expiresAt) => {
     const expiryStr = new Date(expiresAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
@@ -321,6 +381,7 @@ const sendNewBookingNotifications = async (bookingId, pool) => {
 module.exports = {
     verifySmtp,
     sendWithRetry,
+    sendTestEmail,
     sendOtpEmail,
     sendForgotPasswordEmail,
     sendBookingConfirmationEmail,

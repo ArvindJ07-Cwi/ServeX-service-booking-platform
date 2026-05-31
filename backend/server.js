@@ -7,7 +7,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const initSocket = require('./socket/index');
 const logger = require('./utils/logger');
-const { verifySmtp } = require('./utils/emailService');
+const { verifySmtp, sendTestEmail } = require('./utils/emailService');
 
 dotenv.config();
 
@@ -130,6 +130,32 @@ app.get('/api/health/email', async (_req, res) => {
         host: (process.env.SMTP_HOST || '').trim() || 'not configured',
         timestamp: new Date().toISOString(),
     });
+});
+
+// Send a real test email — the only way to confirm delivery works end-to-end
+// Usage: GET /api/health/email/test?to=your@email.com (optional, defaults to SMTP_USER)
+app.get('/api/health/email/test', async (req, res) => {
+    try {
+        const to = req.query.to || null;
+        const info = await sendTestEmail(to);
+        res.json({
+            status: 'ok',
+            message: `Test email sent successfully`,
+            to: to || (process.env.SMTP_USER || '').trim(),
+            messageId: info.messageId,
+            timestamp: new Date().toISOString(),
+        });
+    } catch (err) {
+        logger.error('[Health/Email/Test] Failed:', err.message);
+        res.status(503).json({
+            status: 'error',
+            message: 'Failed to send test email',
+            error: err.message,
+            code: err.code || 'UNKNOWN',
+            hint: err.code === 'EAUTH' ? 'Gmail requires an App Password (not your regular password). Enable 2FA at myaccount.google.com → Security → App Passwords.' : undefined,
+            timestamp: new Date().toISOString(),
+        });
+    }
 });
 
 app.get('/api/health/db', async (_req, res) => {
