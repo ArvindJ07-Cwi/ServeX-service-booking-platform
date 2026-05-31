@@ -42,21 +42,22 @@ api.interceptors.response.use(
     }
 );
 
+
 export const authAPI = {
-    login: (credentials) => api.post('/auth/login', credentials),
-    register: (data) => api.post('/auth/register', data),
-    getProfile: () => api.get('/auth/profile'),
-    forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
-    resetPassword: (token, password) => api.post('/auth/reset-password', { token, password }),
+    login: (credentials) => api.post('/api/auth/login', credentials),
+    register: (data) => api.post('/api/auth/register', data),
+    getProfile: () => api.get('/api/auth/profile'),
+    forgotPassword: (email) => api.post('/api/auth/forgot-password', { email }),
+    resetPassword: (token, password) => api.post('/api/auth/reset-password', { token, password }),
 };
 
 export const servicesAPI = {
-    getAll: (params) => api.get('/services', { params }),
-    getById: (id) => api.get(`/services/${id}`),
-    create: (data) => api.post('/services', data),
-    update: (id, data) => api.put(`/services/${id}`, data),
-    delete: (id) => api.delete(`/services/${id}`),
-    getCategories: () => api.get('/services/categories'),
+    getAll: (params) => api.get('/api/services', { params }),
+    getById: (id) => api.get(`/api/services/${id}`),
+    create: (data) => api.post('/api/services', data),
+    update: (id, data) => api.put(`/api/services/${id}`, data),
+    delete: (id) => api.delete(`/api/services/${id}`),
+    getCategories: () => api.get('/api/services/categories'),
 };
 
 export const bookingsAPI = {
