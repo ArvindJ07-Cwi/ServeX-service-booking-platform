@@ -23,6 +23,7 @@ const allowedOrigins = [
     'http://localhost:5173',
     'http://localhost:5174',
     'http://localhost:3000',
+    'https://serve-x-service-booking-platform-lalvf1k9h.vercel.app', // Vercel production frontend
 ].filter(Boolean);
 
 // Extract the base domain from FRONTEND_URL for Vercel preview matching
