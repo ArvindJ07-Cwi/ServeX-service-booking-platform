@@ -4,7 +4,12 @@ import { chatAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Send, Loader2, MessageSquare, Lock } from 'lucide-react';
 
-const SOCKET_URL = import.meta.env.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL.replace('/api', '') : 'http://localhost:5000';
+// Socket.io needs direct connection to backend (can't go through Vercel proxy)
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL
+    || (import.meta.env.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL.replace('/api', '') : null)
+    || (typeof window !== 'undefined' && window.location.protocol === 'https:'
+        ? 'https://servex-service-booking-platform.onrender.com'
+        : 'http://localhost:5000');
 
 export default function ChatBox({ bookingId, status, isAgent }) {
     const { user } = useAuth();
