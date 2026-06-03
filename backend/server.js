@@ -124,10 +124,13 @@ app.get('/api/health/email', async (_req, res) => {
     const status = result.ok ? 200 : 503;
     res.status(status).json({
         status: result.ok ? 'ok' : 'error',
-        smtp: result.ok ? 'connected' : 'disconnected',
+        method: result.method || 'unknown',
+        connected: result.ok,
         reason: result.reason || null,
-        user: (process.env.SMTP_USER || '').trim() || 'not configured',
-        host: (process.env.SMTP_HOST || '').trim() || 'not configured',
+        brevo_api_key: process.env.BREVO_API_KEY ? '***configured***' : 'NOT SET',
+        smtp_user: (process.env.SMTP_USER || '').trim() || 'not configured',
+        smtp_host: (process.env.SMTP_HOST || '').trim() || 'not configured',
+        from_email: (process.env.FROM_EMAIL || '').trim() || 'not configured',
         timestamp: new Date().toISOString(),
     });
 });

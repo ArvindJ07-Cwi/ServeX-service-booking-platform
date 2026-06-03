@@ -2,12 +2,13 @@ const nodemailer = require('nodemailer');
 const logger = require('./logger');
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ROOT CAUSE FIX: .env had leading spaces on SMTP keys — always trim env vars
+// Environment variables — always trim to prevent leading-space bugs
 // ─────────────────────────────────────────────────────────────────────────────
 const SMTP_HOST = (process.env.SMTP_HOST || '').trim();
 const SMTP_PORT = parseInt((process.env.SMTP_PORT || '587').trim(), 10);
 const SMTP_USER = (process.env.SMTP_USER || '').trim();
 const SMTP_PASS = (process.env.SMTP_PASS || '').trim();
+const BREVO_API_KEY = (process.env.BREVO_API_KEY || '').trim();
 const FROM_NAME = (process.env.FROM_NAME || 'ServeX').trim();
 const FROM_EMAIL = (process.env.FROM_EMAIL || SMTP_USER || 'noreply@servex.app').trim();
 const FRONTEND_URL = (process.env.FRONTEND_URL || 'http://localhost:5173').trim();
@@ -15,7 +16,39 @@ const FRONTEND_URL = (process.env.FRONTEND_URL || 'http://localhost:5173').trim(
 const FROM_HEADER = `"${FROM_NAME}" <${FROM_EMAIL}>`;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Transporter factory — real SMTP if credentials present, console mock otherwise
+// BREVO HTTP API — bypasses SMTP port blocking on Render
+// Uses https://api.brevo.com/v3/smtp/email (port 443, always open)
+// ─────────────────────────────────────────────────────────────────────────────
+const sendViaBrevoAPI = async (mailOptions) => {
+    const payload = {
+        sender: { name: FROM_NAME, email: FROM_EMAIL },
+        to: [{ email: mailOptions.to }],
+        subject: mailOptions.subject,
+        htmlContent: mailOptions.html || `<pre>${mailOptions.text}</pre>`,
+        textContent: mailOptions.text || '',
+    };
+
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+            'accept': 'application/json',
+            'api-key': BREVO_API_KEY,
+            'content-type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+        const errorBody = await response.text();
+        throw new Error(`Brevo API error ${response.status}: ${errorBody}`);
+    }
+
+    const data = await response.json();
+    return { messageId: data.messageId || `brevo-${Date.now()}` };
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SMTP Transporter (fallback for local dev or non-Render hosts)
 // ─────────────────────────────────────────────────────────────────────────────
 let _transporter = null;
 
@@ -23,14 +56,10 @@ const getTransporter = () => {
     if (_transporter) return _transporter;
 
     if (SMTP_USER && SMTP_PASS) {
-        // Gmail shorthand: use 'gmail' service which auto-configures host/port/TLS
         const isGmail = SMTP_HOST === 'smtp.gmail.com' || SMTP_USER.endsWith('@gmail.com');
 
         const transportConfig = isGmail
-            ? {
-                service: 'gmail',
-                auth: { user: SMTP_USER, pass: SMTP_PASS },
-            }
+            ? { service: 'gmail', auth: { user: SMTP_USER, pass: SMTP_PASS } }
             : {
                 host: SMTP_HOST || 'smtp.gmail.com',
                 port: SMTP_PORT,
@@ -39,16 +68,14 @@ const getTransporter = () => {
                 tls: { rejectUnauthorized: false },
             };
 
-        // Add timeouts to prevent hanging on blocked ports
-        transportConfig.connectionTimeout = 10000; // 10 seconds
+        transportConfig.connectionTimeout = 10000;
         transportConfig.greetingTimeout = 10000;
         transportConfig.socketTimeout = 15000;
 
         _transporter = nodemailer.createTransport(transportConfig);
-        logger.info(`[Email] Transporter configured: ${isGmail ? 'Gmail service' : `${SMTP_HOST}:${SMTP_PORT}`} as ${SMTP_USER}`);
+        logger.info(`[Email] SMTP transporter configured: ${isGmail ? 'Gmail' : `${SMTP_HOST}:${SMTP_PORT}`}`);
     } else {
-        // Dev/fallback: mock transporter that logs to console
-        logger.warn('[Email] SMTP credentials missing — emails will be logged to console only.');
+        logger.warn('[Email] No email credentials configured — emails will be logged to console only.');
         _transporter = {
             sendMail: async (opts) => {
                 logger.info(`\n📧 [EMAIL MOCK]\n  To: ${opts.to}\n  Subject: ${opts.subject}\n  Body: ${opts.text || '(html only)'}\n`);
@@ -61,56 +88,52 @@ const getTransporter = () => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Verify SMTP connection (used by health-check endpoint) — WITH TIMEOUT
+// Detect which method to use
 // ─────────────────────────────────────────────────────────────────────────────
-const verifySmtp = () => {
-    return new Promise((resolve) => {
-        if (!SMTP_USER || !SMTP_PASS) {
-            return resolve({ ok: false, reason: 'SMTP credentials not configured' });
-        }
-        const t = getTransporter();
-        if (!t.verify) return resolve({ ok: false, reason: 'Mock transporter active' });
+const useBrevoAPI = () => !!BREVO_API_KEY;
 
-        // Timeout after 10 seconds to prevent health endpoint from hanging
+// ─────────────────────────────────────────────────────────────────────────────
+// Verify connection (used by health-check endpoint)
+// ─────────────────────────────────────────────────────────────────────────────
+const verifySmtp = async () => {
+    if (useBrevoAPI()) {
+        // Verify Brevo API key by calling account endpoint
+        try {
+            const res = await fetch('https://api.brevo.com/v3/account', {
+                headers: { 'api-key': BREVO_API_KEY, 'accept': 'application/json' },
+            });
+            if (res.ok) {
+                const data = await res.json();
+                return { ok: true, method: 'brevo-api', email: data.email || FROM_EMAIL };
+            }
+            return { ok: false, method: 'brevo-api', reason: `API returned ${res.status}` };
+        } catch (err) {
+            return { ok: false, method: 'brevo-api', reason: err.message };
+        }
+    }
+
+    if (!SMTP_USER || !SMTP_PASS) {
+        return { ok: false, method: 'none', reason: 'No email credentials configured (set BREVO_API_KEY or SMTP_USER+SMTP_PASS)' };
+    }
+
+    return new Promise((resolve) => {
+        const t = getTransporter();
+        if (!t.verify) return resolve({ ok: false, method: 'smtp', reason: 'Mock transporter' });
+
         const timeout = setTimeout(() => {
-            resolve({ ok: false, reason: 'SMTP verify timed out after 10s — port may be blocked' });
+            resolve({ ok: false, method: 'smtp', reason: 'SMTP verify timed out (port likely blocked — use BREVO_API_KEY instead)' });
         }, 10000);
 
         t.verify((err) => {
             clearTimeout(timeout);
             if (err) {
                 logger.error('[Email] SMTP verify failed:', err.message);
-                resolve({ ok: false, reason: err.message });
+                resolve({ ok: false, method: 'smtp', reason: `${err.message} — try setting BREVO_API_KEY instead` });
             } else {
-                resolve({ ok: true });
+                resolve({ ok: true, method: 'smtp' });
             }
         });
     });
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Send test email — used by /api/health/email/test endpoint
-// ─────────────────────────────────────────────────────────────────────────────
-const sendTestEmail = async (toEmail) => {
-    const target = toEmail || SMTP_USER;
-    if (!target) throw new Error('No recipient email provided');
-
-    const info = await sendWithRetry({
-        to: target,
-        subject: 'ServeX Email Test ✅',
-        text: `This is a test email from ServeX. If you can read this, email delivery is working!\n\nTimestamp: ${new Date().toISOString()}`,
-        html: `
-            <div style="font-family:Inter,Arial,sans-serif;max-width:560px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
-                <div style="background:#2563eb;padding:24px 32px"><h1 style="color:#fff;font-size:22px;margin:0">ServeX</h1></div>
-                <div style="padding:32px">
-                    <h2 style="font-size:18px;color:#111827;margin:0 0 8px">Email Test Successful ✅</h2>
-                    <p style="color:#6b7280;font-size:14px;margin:0 0 24px">If you can read this, ServeX email delivery is working correctly.</p>
-                    <p style="color:#9ca3af;font-size:12px;margin:0">Sent at: ${new Date().toISOString()}</p>
-                </div>
-            </div>
-        `,
-    });
-    return info;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -118,31 +141,34 @@ const sendTestEmail = async (toEmail) => {
 // ─────────────────────────────────────────────────────────────────────────────
 const sendWithRetry = async (mailOptions, attempts = 3) => {
     const opts = { from: FROM_HEADER, ...mailOptions };
-    const transporter = getTransporter();
     let lastError;
 
     for (let i = 1; i <= attempts; i++) {
         try {
-            const info = await transporter.sendMail(opts);
-            logger.info(`[Email] ✅ Sent to ${opts.to} | Subject: "${opts.subject}" | MsgID: ${info.messageId}`);
+            let info;
+            if (useBrevoAPI()) {
+                info = await sendViaBrevoAPI(opts);
+            } else {
+                const transporter = getTransporter();
+                info = await transporter.sendMail(opts);
+            }
+            logger.info(`[Email] ✅ Sent to ${opts.to} | Subject: "${opts.subject}" | via ${useBrevoAPI() ? 'Brevo API' : 'SMTP'} | MsgID: ${info.messageId}`);
             return info;
         } catch (err) {
             lastError = err;
             logger.error(`[Email] ❌ Attempt ${i}/${attempts} failed for ${opts.to}: ${err.message}`);
 
-            // If auth fails, don't retry — credentials are wrong
             if (err.code === 'EAUTH' || err.responseCode === 535) {
-                logger.error('[Email] 🚨 Authentication failed — check SMTP_USER and SMTP_PASS. For Gmail, use an App Password (not your regular password).');
+                logger.error('[Email] 🚨 Auth failed — check credentials.');
                 break;
             }
 
             if (i < attempts) {
-                const delay = Math.pow(2, i) * 500; // 1s, 2s, 4s
+                const delay = Math.pow(2, i) * 500;
                 await new Promise(r => setTimeout(r, delay));
 
-                // Reset transporter on connection errors to force reconnect
-                if (err.code === 'ESOCKET' || err.code === 'ECONNECTION' || err.code === 'ETIMEDOUT') {
-                    logger.info('[Email] Resetting transporter for retry...');
+                if (!useBrevoAPI() && (err.code === 'ESOCKET' || err.code === 'ECONNECTION' || err.code === 'ETIMEDOUT')) {
+                    logger.info('[Email] Resetting SMTP transporter for retry...');
                     _transporter = null;
                 }
             }
@@ -154,7 +180,31 @@ const sendWithRetry = async (mailOptions, attempts = 3) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// OTP EMAIL — Sent to user when service starts
+// Send test email
+// ─────────────────────────────────────────────────────────────────────────────
+const sendTestEmail = async (toEmail) => {
+    const target = toEmail || FROM_EMAIL || SMTP_USER;
+    if (!target) throw new Error('No recipient email provided');
+
+    return await sendWithRetry({
+        to: target,
+        subject: 'ServeX Email Test ✅',
+        text: `This is a test email from ServeX. Email delivery is working!\n\nMethod: ${useBrevoAPI() ? 'Brevo HTTP API' : 'SMTP'}\nTimestamp: ${new Date().toISOString()}`,
+        html: `
+            <div style="font-family:Inter,Arial,sans-serif;max-width:560px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
+                <div style="background:#2563eb;padding:24px 32px"><h1 style="color:#fff;font-size:22px;margin:0">ServeX</h1></div>
+                <div style="padding:32px">
+                    <h2 style="font-size:18px;color:#111827;margin:0 0 8px">Email Test Successful ✅</h2>
+                    <p style="color:#6b7280;font-size:14px;margin:0 0 16px">Email delivery is working correctly via <strong>${useBrevoAPI() ? 'Brevo HTTP API' : 'SMTP'}</strong>.</p>
+                    <p style="color:#9ca3af;font-size:12px;margin:0">Sent at: ${new Date().toISOString()}</p>
+                </div>
+            </div>
+        `,
+    });
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OTP EMAIL
 // ─────────────────────────────────────────────────────────────────────────────
 const sendOtpEmail = async (userEmail, userName, bookingId, otpCode, expiresAt) => {
     const expiryStr = new Date(expiresAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
@@ -164,9 +214,7 @@ const sendOtpEmail = async (userEmail, userName, bookingId, otpCode, expiresAt) 
         text: `Hello ${userName},\n\nYour service is underway. Share this OTP with your technician to confirm completion:\n\nOTP: ${otpCode}\n\nExpires at: ${expiryStr}\n\nDo NOT share this with anyone else.\n\nServeX Team`,
         html: `
             <div style="font-family:Inter,Arial,sans-serif;max-width:560px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
-                <div style="background:#2563eb;padding:24px 32px">
-                    <h1 style="color:#fff;font-size:22px;margin:0">ServeX</h1>
-                </div>
+                <div style="background:#2563eb;padding:24px 32px"><h1 style="color:#fff;font-size:22px;margin:0">ServeX</h1></div>
                 <div style="padding:32px">
                     <h2 style="font-size:18px;color:#111827;margin:0 0 8px">Your Completion OTP</h2>
                     <p style="color:#6b7280;font-size:14px;margin:0 0 24px">Hello ${userName}, your technician has arrived. Share this OTP to confirm service completion.</p>
@@ -176,9 +224,7 @@ const sendOtpEmail = async (userEmail, userName, bookingId, otpCode, expiresAt) 
                     </div>
                     <a href="${FRONTEND_URL}/bookings/${bookingId}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">View Booking</a>
                 </div>
-                <div style="padding:16px 32px;background:#f9fafb;border-top:1px solid #e5e7eb">
-                    <p style="font-size:12px;color:#9ca3af;margin:0">ServeX — Professional Home Services</p>
-                </div>
+                <div style="padding:16px 32px;background:#f9fafb;border-top:1px solid #e5e7eb"><p style="font-size:12px;color:#9ca3af;margin:0">ServeX — Professional Home Services</p></div>
             </div>
         `,
     });
@@ -283,7 +329,7 @@ const notifyUserServiceCompletedEmail = async (user, booking, service) => {
                     <div style="padding:32px">
                         <h2 style="font-size:18px;color:#111827;margin:0 0 4px">Service Completed! 🎉</h2>
                         <p style="color:#6b7280;font-size:14px;margin:0 0 24px">Hello ${user.name}, your <strong>${service.name}</strong> service has been completed. We hope you're happy with the result!</p>
-                        <a href="${FRONTEND_URL}/bookings/${booking.id}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;margin-right:12px">Leave a Review</a>
+                        <a href="${FRONTEND_URL}/bookings/${booking.id}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">Leave a Review</a>
                     </div>
                     <div style="padding:16px 32px;background:#f9fafb;border-top:1px solid #e5e7eb"><p style="font-size:12px;color:#9ca3af;margin:0">ServeX — Professional Home Services</p></div>
                 </div>
@@ -389,7 +435,6 @@ module.exports = {
     sendNewBookingNotifications,
     notifyUserServiceCompletedEmail,
     notifyUserPaymentSuccessEmail,
-    // Legacy aliases kept for backward compat
     notifyAgentsNewBooking: () => {},
     notifyAdminNewBooking: () => {},
     notifyUserBookingCreated: () => {},
