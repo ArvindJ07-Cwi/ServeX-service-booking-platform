@@ -15,40 +15,27 @@ const app = express();
 const server = http.createServer(app);
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CORS — restrict to FRONTEND_URL in production
-// Also allow Vercel preview deployments (URLs include hash suffixes)
+// CORS — allow frontend origins
+// Vercel generates unique URLs per deployment (with hash suffixes),
+// so we allow ALL *.vercel.app origins. JWT auth provides the real security.
 // ─────────────────────────────────────────────────────────────────────────────
 const allowedOrigins = [
     process.env.FRONTEND_URL || 'http://localhost:5173',
     'http://localhost:5173',
     'http://localhost:5174',
     'http://localhost:3000',
-    'https://serve-x-service-booking-platform-lalvf1k9h.vercel.app', // Vercel production frontend
 ].filter(Boolean);
-
-// Extract the base domain from FRONTEND_URL for Vercel preview matching
-// e.g. "https://serve-x-service-booking-platform.vercel.app" → "serve-x-service-booking-platform"
-const frontendUrl = process.env.FRONTEND_URL || '';
-const vercelMatch = frontendUrl.match(/^https?:\/\/(.+?)\.vercel\.app/);
-const vercelProjectBase = vercelMatch ? vercelMatch[1] : null;
 
 app.use(cors({
     origin: (origin, callback) => {
-        // Allow requests with no origin (Postman, curl, server-to-server)
+        // Allow requests with no origin (Postman, curl, server-to-server, Vercel rewrites)
         if (!origin) return callback(null, true);
-        // Exact match
+        // Exact match against allowedOrigins list
         if (allowedOrigins.includes(origin)) return callback(null, true);
-        // Vercel preview URLs: serve-x-service-booking-platform-HASH.vercel.app
-        if (vercelProjectBase && origin.includes('.vercel.app')) {
-            const originHost = origin.replace(/^https?:\/\//, '');
-            if (originHost.startsWith(vercelProjectBase) && originHost.endsWith('.vercel.app')) {
-                return callback(null, true);
-            }
-        }
-        // Render preview URLs: *.onrender.com
-        if (origin.endsWith('.onrender.com')) {
-            return callback(null, true);
-        }
+        // Allow ALL Vercel preview/production URLs
+        if (origin.endsWith('.vercel.app')) return callback(null, true);
+        // Allow ALL Render URLs
+        if (origin.endsWith('.onrender.com')) return callback(null, true);
         logger.warn(`[CORS] Blocked origin: ${origin}`);
         callback(new Error(`CORS: origin ${origin} not allowed`));
     },
@@ -58,11 +45,17 @@ app.use(cors({
 }));
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Socket.io CORS — same origin policy
+// Socket.io CORS — same dynamic origin policy as Express
 // ─────────────────────────────────────────────────────────────────────────────
 const io = socketIo(server, {
     cors: {
-        origin: allowedOrigins,
+        origin: (origin, callback) => {
+            if (!origin) return callback(null, true);
+            if (allowedOrigins.includes(origin)) return callback(null, true);
+            if (origin.endsWith('.vercel.app')) return callback(null, true);
+            if (origin.endsWith('.onrender.com')) return callback(null, true);
+            callback(new Error('CORS not allowed'));
+        },
         methods: ['GET', 'POST'],
         credentials: true,
     }

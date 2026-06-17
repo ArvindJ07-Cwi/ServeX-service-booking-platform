@@ -14,7 +14,7 @@ const api = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
-    timeout: 15000,
+    timeout: 30000, // 30s — Render free tier cold starts take up to 50s
 });
 
 // Request interceptor — attach JWT token from sessionStorage (per-tab session)
@@ -29,76 +29,63 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// Response interceptor — handle global errors (e.g., 401 Unauthorized)
+// Response interceptor — auto-retry on network errors (Render cold start)
 api.interceptors.response.use(
     (response) => response,
-    (error) => {
+    async (error) => {
+        const config = error.config;
+        // Retry once on network errors or 502/503/504 (Render waking up)
+        if (
+            !config._retried &&
+            (error.code === 'ECONNABORTED' || !error.response || [502, 503, 504].includes(error.response?.status))
+        ) {
+            config._retried = true;
+            // Wait 2 seconds for Render to finish cold start
+            await new Promise(r => setTimeout(r, 2000));
+            return api(config);
+        }
         if (error.response && error.response.status === 401) {
-            // Optional: Redirect to login or clear token
-            // localStorage.removeItem('token');
-            // window.location.href = '/login';
+            // Optional: handle token expiry
         }
         return Promise.reject(error);
     }
 );
 
+// ─────────────────────────────────────────────────────────────────────────────
+// NOTE: baseURL already ends with /api, so all paths below are RELATIVE to /api
+// e.g. '/auth/login' → full URL: baseURL + '/auth/login' = '.../api/auth/login'
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const authAPI = {
-    login: (credentials) => api.post('/api/auth/login', credentials),
-    register: (data) => api.post('/api/auth/register', data),
-    getProfile: () => api.get('/api/auth/profile'),
-    forgotPassword: (email) => api.post('/api/auth/forgot-password', { email }),
-    resetPassword: (token, password) => api.post('/api/auth/reset-password', { token, password }),
+    login: (credentials) => api.post('/auth/login', credentials),
+    register: (data) => api.post('/auth/register', data),
+    getProfile: () => api.get('/auth/profile'),
+    forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+    resetPassword: (token, password) => api.post('/auth/reset-password', { token, password }),
 };
 
 export const servicesAPI = {
-    getAll: (params) => api.get('/api/services', { params }),
-    getById: (id) => api.get(`/api/services/${id}`),
-    create: (data) => api.post('/api/services', data),
-    update: (id, data) => api.put(`/api/services/${id}`, data),
-    delete: (id) => api.delete(`/api/services/${id}`),
-    getCategories: () => api.get('/api/services/categories'),
+    getAll: (params) => api.get('/services', { params }),
+    getById: (id) => api.get(`/services/${id}`),
+    create: (data) => api.post('/services', data),
+    update: (id, data) => api.put(`/services/${id}`, data),
+    delete: (id) => api.delete(`/services/${id}`),
+    getCategories: () => api.get('/services/categories'),
 };
 
 export const bookingsAPI = {
-    // User: create booking
-    // Map 'service' (id string) to 'service_id' for backend compatibility
     create: (data) => api.post('/bookings', { ...data, service_id: data.service || data.service_id }),
-
-    // User: get my bookings
     getMyBookings: () => api.get('/bookings/my'),
-
-    // Agent: get available bookings
     getAvailable: () => api.get('/bookings/available'),
-
-    // Agent: accept booking
     accept: (id) => api.patch(`/bookings/${id}/accept`),
-
-    // Agent: reject assigned booking
     reject: (id) => api.patch(`/bookings/${id}/reject`),
-
-    // Agent: start service
     start: (id) => api.patch(`/bookings/${id}/start`),
-
-    // Agent: complete service
     complete: (id) => api.patch(`/bookings/${id}/complete`),
-
-    // User/Admin: cancel booking
     cancel: (id) => api.patch(`/bookings/${id}/cancel`),
-
-    // OTP: generate OTP for booking
     generateOtp: (id) => api.post(`/bookings/${id}/generate-otp`),
-
-    // OTP: verify OTP to complete booking
     verifyOtp: (id, otp) => api.post(`/bookings/${id}/verify-otp`, { otp }),
-
-    // Admin: get all bookings
-    getAll: (params) => api.get('/bookings/all', { params }), // Updated to point to /all
-
-    // Generic Access
+    getAll: (params) => api.get('/bookings/all', { params }),
     getById: (id) => api.get(`/bookings/${id}`),
-
-    // Deprecated but kept for compatibility during migration if needed
     updateStatus: (id, status) => {
         if (status === 'in_progress') return api.patch(`/bookings/${id}/start`);
         if (status === 'completed') return api.patch(`/bookings/${id}/complete`);
@@ -119,17 +106,15 @@ export const usersAPI = {
 };
 
 export const paymentAPI = {
-    // Create Razorpay order
     createOrder: (data) => api.post('/payment/create-order', data),
-    // Verify payment and create booking
     verify: (data) => api.post('/payment/verify', data),
 };
 
 export const couponAPI = {
-    apply: (data) => api.post('/coupons/apply', data), // expects { code, amount }
+    apply: (data) => api.post('/coupons/apply', data),
     getAll: () => api.get('/coupons'),
     create: (data) => api.post('/coupons', data),
-    delete: (id) => api.delete(`/coupons/${id}`)
+    delete: (id) => api.delete(`/coupons/${id}`),
 };
 
 export const reviewsAPI = {
