@@ -9,13 +9,18 @@ const { sendForgotPasswordEmail } = require('../utils/emailService');
 // @access  Public
 const authUser = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        let { email, password } = req.body;
 
         if (!email || !password) {
             return res.status(400).json({ message: 'Please provide email and password' });
         }
 
-        const [users] = await pool.query('SELECT id as _id, name, email, password_hash, role, phone, location, city, area, service_category, availability_status FROM users WHERE email = ?', [email]);
+        email = String(email).trim().toLowerCase();
+
+        const [users] = await pool.query(
+            'SELECT id as _id, name, email, password_hash, role, phone, location, city, area, service_category, availability_status FROM users WHERE LOWER(email) = ?',
+            [email]
+        );
         const user = users[0];
 
         if (user && (await bcrypt.compare(password, user.password_hash))) {
@@ -36,8 +41,8 @@ const authUser = async (req, res) => {
             return res.status(401).json({ message: 'Invalid email or password' });
         }
     } catch (error) {
-        console.error('Login error:', error);
-        return res.status(500).json({ message: 'Server error during login' });
+        console.error('Login error:', error.message || error);
+        return res.status(500).json({ message: 'Server error during login. Please try again.' });
     }
 };
 

@@ -14,6 +14,7 @@ export default function ServicesPage() {
 
     const [services, setServices] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
     const [searchInput, setSearchInput] = useState(searchParam);
 
     useEffect(() => {
@@ -22,13 +23,16 @@ export default function ServicesPage() {
 
     const fetchServices = async () => {
         setLoading(true);
+        setError(false);
         try {
             const params = {};
             if (categoryParam) params.category = categoryParam;
             if (searchParam) params.search = searchParam;
             const { data } = await servicesAPI.getAll(params);
             setServices(data.services || data || []);
-        } catch {
+        } catch (err) {
+            console.error('Failed to fetch services:', err);
+            setError(true);
             setServices([]);
         } finally {
             setLoading(false);
@@ -119,21 +123,34 @@ export default function ServicesPage() {
                     }
                 </div>
 
-                {/* Empty state */}
+                {/* Empty state / Error state */}
                 {!loading && services.length === 0 && (
                     <div className="text-center py-20">
                         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-surface-100">
                             <Package className="h-8 w-8 text-surface-300" />
                         </div>
                         <h3 className="text-lg font-semibold text-surface-900">
-                            No services found
+                            {error ? 'Unable to load services' : 'No services found'}
                         </h3>
                         <p className="text-sm text-surface-500 mt-1 mb-6 max-w-sm mx-auto">
-                            {searchParam ? `No results for "${searchParam}". Try a different search term.` : categoryParam ? `No services in "${categoryParam}" yet.` : 'No services available at the moment.'}
+                            {error
+                                ? 'The server was taking a moment to connect. Click below to refresh.'
+                                : searchParam
+                                ? `No results for "${searchParam}". Try a different search term.`
+                                : categoryParam
+                                ? `No services in "${categoryParam}" yet.`
+                                : 'No services available at the moment.'}
                         </p>
-                        <button onClick={clearFilters} className="btn-secondary">
-                            <ArrowLeft className="h-4 w-4" /> View all services
-                        </button>
+                        <div className="flex items-center justify-center gap-3">
+                            {error && (
+                                <button onClick={fetchServices} className="btn-primary">
+                                    Retry Connection
+                                </button>
+                            )}
+                            <button onClick={clearFilters} className="btn-secondary">
+                                <ArrowLeft className="h-4 w-4" /> View all services
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>

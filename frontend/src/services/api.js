@@ -14,7 +14,7 @@ const api = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
-    timeout: 30000, // 30s — Render free tier cold starts take up to 50s
+    timeout: 45000, // 45s — Render free tier cold starts can take up to 45s
 });
 
 // Request interceptor — attach JWT token from sessionStorage (per-tab session)
@@ -29,27 +29,35 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// Response interceptor — auto-retry on network errors (Render cold start)
+// Response interceptor — auto-retry up to 2 times on network errors, timeouts, or 500/502/503/504 status codes (Render waking up / DB reconnecting)
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
         const config = error.config;
-        // Retry once on network errors or 502/503/504 (Render waking up)
-        if (
-            !config._retried &&
-            (error.code === 'ECONNABORTED' || !error.response || [502, 503, 504].includes(error.response?.status))
-        ) {
-            config._retried = true;
-            // Wait 2 seconds for Render to finish cold start
-            await new Promise(r => setTimeout(r, 2000));
+        if (!config) return Promise.reject(error);
+
+        config._retryCount = config._retryCount || 0;
+        const maxRetries = 2;
+
+        const status = error.response?.status;
+        const shouldRetry =
+            config._retryCount < maxRetries &&
+            (error.code === 'ECONNABORTED' ||
+                !error.response ||
+                [500, 502, 503, 504].includes(status));
+
+        if (shouldRetry) {
+            config._retryCount += 1;
+            const backoffMs = config._retryCount * 1500; // 1.5s then 3s
+            console.warn(`[API] Request failed (${status || error.code}). Retrying attempt ${config._retryCount}/${maxRetries} in ${backoffMs}ms...`);
+            await new Promise((r) => setTimeout(r, backoffMs));
             return api(config);
         }
-        if (error.response && error.response.status === 401) {
-            // Optional: handle token expiry
-        }
+
         return Promise.reject(error);
     }
 );
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // NOTE: baseURL already ends with /api, so all paths below are RELATIVE to /api

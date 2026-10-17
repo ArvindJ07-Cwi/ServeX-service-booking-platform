@@ -111,18 +111,25 @@ export default function Home() {
     }, [isAuthenticated, user, navigate]);
 
     useEffect(() => {
-        const fetchServices = async () => {
+        let isMounted = true;
+        const fetchServices = async (isRetry = false) => {
             try {
                 const { data } = await servicesAPI.getAll({ limit: 6 });
-                setServices(data.services || data || []);
-            } catch {
-                // Use empty array on error — will show empty state
-                setServices([]);
+                if (isMounted) {
+                    setServices(data.services || data || []);
+                }
+            } catch (err) {
+                if (isMounted) setServices([]);
+                if (!isRetry) {
+                    // Try one silent retry after 3s if backend was booting
+                    setTimeout(() => fetchServices(true), 3000);
+                }
             } finally {
-                setLoading(false);
+                if (isMounted) setLoading(false);
             }
         };
         fetchServices();
+        return () => { isMounted = false; };
     }, []);
 
     // Auto-rotate banners

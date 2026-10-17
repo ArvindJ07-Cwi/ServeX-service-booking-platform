@@ -12,7 +12,9 @@ const { verifySmtp, sendTestEmail } = require('./utils/emailService');
 dotenv.config();
 
 const app = express();
+app.set('trust proxy', 1);
 const server = http.createServer(app);
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CORS — allow frontend origins
